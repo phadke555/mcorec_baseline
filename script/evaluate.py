@@ -113,7 +113,7 @@ def main():
 
     print(f"Average conversation clustering F1 score: {sum(all_conversation_clustering_f1_score) / len(all_conversation_clustering_f1_score)}")
     print(f"Average speaker WER: {sum(all_speaker_wer) / len(all_speaker_wer)}")
-    print(f"Average cluster speaker WER: {sum(all_cluster_speaker_wer) / len(all_cluster_speaker_wer)}")
+    print(f"Average Speaker's WER based clustering: {sum(all_cluster_speaker_wer) / len(all_cluster_speaker_wer)}")
 
 
 if __name__ == "__main__":
