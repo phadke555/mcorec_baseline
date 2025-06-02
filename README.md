@@ -225,5 +225,9 @@ The results for the baseline model on dev subset are the following:
 - Average Speaker WER: 0.5674
 - Average Speaker's WER based clustering: 0.3651
 
+## Acknowledgement
+
+This repository is built using the [auto_avsr](https://github.com/mpc001/auto_avsr), [espnet](https://github.com/espnet/espnet), and [avhubert](https://github.com/facebookresearch/av_hubert) repositories.
+
 ## License
 MCoRec is CC-BY-NC licensed, as found in the LICENSE file.

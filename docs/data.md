@@ -19,109 +19,150 @@ In addition to the MCoRec dataset, we also publish [AVYT dataset](#), which can 
 
 ## Description of the MCoRec data
 
-The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on TBC). One recording session features a fews conversations, each have two or more participants. One 360 camera place in the middle of the room to capture the central view which contants every participants. Each participant have a phone to capture the egocentric view. The phone placed close to and in front of the speaker, offering a clear view of the speaker’s face. For system development and evaluation only the recordings of central view are provided. Note that the number of people show in the central can be bigger than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
+The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on TBU). One recording session features a fews conversations, each have two or more participants. One 360 camera place in the middle of the room to capture the central view which contants every participants. Each participant have a phone to capture the egocentric view. The phone placed close to and in front of the speaker, offering a clear view of the speaker’s face. For system development and evaluation only the recordings of central view are provided. Note that the number of people show in the central can be bigger than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
 
 ## Detailed desciption of data structure and formats
 
 The directory structure is as follows:
 ```
-Example of session with 8 speakers separated into 2 conversations.
+Example of session with 4 speakers separated into 2 conversations.
 
 session_id
 ├── central_video.mp4
-└── conversations
-    ├── 00
-    │   ├── spk_1
-    │   │   ├── central
-    │   │   │   ├── bbox.json
-    │   │   │   └── uem.json
-    │   │   ├── ego
-    │   │   │   ├── bbox.json
-    │   │   │   ├── uem.json
-    │   │   │   └── video.mp4
-    │   │   └── transcript.vtt
-    │   ├── spk_2
-    │   ├── spk_3
-    │   └── spk_4
-    └── 01
-        ├── spk_5
-        ├── spk_6
-        ├── spk_7
-        └── spk_8
+├── metadata.json
+├── labels # Only provided in the train and dev set
+│   ├── speaker_to_cluster.json
+│   ├── spk_0.vtt
+│   ├── spk_1.vtt
+│   ├── spk_2.vtt
+│   └── spk_3.vtt
+└── speakers
+    ├── spk_0
+    ├── spk_1
+    │   ├── central_crops
+    │   │   ├── track_00_bbox.json
+    │   │   ├── track_00.json
+    │   │   ├── track_00.mp4
+    │   │   ├── track_01_bbox.json
+    │   │   ├── track_01.json
+    │   │   └── track_01.mp4
+    │   ├── ego_crops # Only provided in the train set
+    │   │   ├── track_00_bbox.json
+    │   │   ├── track_00.json
+    │   │   └── track_00.mp4
+    │   └── ego_video.mp4
+    ├── spk_2
+    └── spk_3
 ```
 
-Each `spk_*` folder holds three sub-components:
+- Each recording session is contained within a directory named with a unique `session_id`
 
-- **central**: Annotations for the target speaker in the central view
-- **ego**: Egocentric video and annotations
-- **transcript.vtt**: Time-aligned transcription of the speaker’s utterances
+- `central_video.mp4`: This is the main video file for the session, captured by the 360° camera placed in the center of the room. It provides a view of all individuals present.
 
-Below is a detailed description of each file type and its schema:
+- `speakers/`: This directory contains subdirectories for each individual target participant (e.g., `spk_0, spk_1, ... spk_N`) who needs to be processed in the session.
 
-### 1. `bbox.json`
+- `central_crops/`: This folder contains data derived from the `central_video.mp4` specifically for a speaker. It contains multiple tracks, all from the same speaker but in different timeline (depend on how the speaker's face been recorded)
+  - `track_xx.mp4`: These are 96x96 face crop videos of the speaker.
+  - `track_xx_bbox.json`: Stores bounding-box points. Each entry uses the frame number (as a string) to map to a bounding box specification. Example:
 
-Stores bounding-box trajectories for a single speaker in a given video stream. Each entry uses the frame number (as a string) to map to a bounding box specification:
+    ```json
+    { 
+    "0": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},     
+    "1": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},
+      "...": { /* additional frames */ }
+    }
+    ```
+  - `track_xx.json`: Contain the metadata of the track like start-end time/frame of the track, track duration Example:
 
-```json
-{
-  "0": { "x": 93, "y": 308, "w": 206, "h": 309 },
-  "1": { "x": 93, "y": 309, "w": 205, "h": 309 },
-  "...": { /* additional frames */ }
-}
-```
+    ```json
+    {
+        "frame_start": 0,
+        "frame_end": 10996,
+        "start_time": 0.0,
+        "end_time": 439.84,
+        "duration": 439.84
+    }
+    ```
 
-* Each **frame key** (string) maps to an object with:
-  * **x**, **y**: top-left corner coordinates in pixels.
-  * **w**, **h**: width and height of the bounding box in pixels.
-* `bbox.json` in central folder mapping to `central_video.mp4` video.
-* `bbox.json` in ego folder mapping to speaker's `video.mp4`.
+- `ego_crops/`: This subfolder is only provided in the training set. It contains data derived from the egocentric video (e.g., `ego_video.mp4`) captured by the speaker's phone. The file inside this folder have the same structure like the `central_crops/` folder.
 
-### 2. `uem.json`
+- `labels/`: This subfolder is only provided in the train and dev set. It contains the ground truth information for the session.
+  - `speaker_to_cluster.json`: This file likely maps each speaker ID (e.g., spk_0, spk_1) to a conversation cluster or group ID. This helps in identifying which speakers are part of the same conversation within the session, as one session can feature multiple distinct conversations. Example:
+    ```json
+    {
+        "spk_0": 0,
+        "spk_1": 0,
+        "spk_2": 1,
+        "spk_3": 1,
+        "spk_4": 2,
+        "spk_5": 2
+    }
+    ```  
 
-Defines Valid Sub-Intervals for processing (Unit Enable Mask).
+  - `spk_0.vtt, spk_1.vtt, ... spk_N.vtt`: These are WebVTT (Web Video Text Tracks) files, one for each target speaker in the session (identified as spk_0, spk_1, etc.). Each .vtt file contains the time-stamped transcriptions of the speech for that specific speaker. Example:
+    ```webvtt
+    WEBVTT
 
-```
-{
-    "start": 3.5,               // in seconds when the conversation start
-    "stop": 363.9                 // in seconds when the conversation stop
-}
-```
-* **start** / **stop**: floats representing seconds.
+    00:00:03.500 --> 00:00:05.200
+    Hello everyone,
 
-### 3. `video.mp4` (Ego Only)
+    00:00:06.000 --> 00:00:08.300
+    Welcome to the meeting.
+    ```
 
-Standard H.264-encoded MP4 video captured by the participant’s device.
 
-* **Frame rate**: 25 fps
-* **Resolution**: 720p.
+- `metadata.json`: 
 
-### 4. `central_video.mp4`
+  ```json
+  {
+    "spk_0": {...},
+    "spk_1": {
+        "ego": { # Only provided in the train set
+            "video": "speakers/spk_0/ego_video.mp4",
+            "uem": {
+                "start": 5.6545,
+                "end": 367.8575
+            },
+            "crops": [
+                {
+                    "video": "speakers/spk_0/ego_crops/track_00.mp4",
+                    "crop_metadata": "speakers/spk_0/ego_crops/track_00.json",
+                    "bbox": "speakers/spk_0/ego_crops/track_00_bbox.json"
+                }
+            ]
+        },
+        "central": {
+            "video": "central_video.mp4",
+            "uem": {
+                "start": 11.6017,
+                "end": 373.8117
+            },
+            "crops": [
+                {
+                    "video": "speakers/spk_0/central_crops/track_00.mp4",
+                    "crop_metadata": "speakers/spk_0/central_crops/track_00.json",
+                    "bbox": "speakers/spk_0/central_crops/track_00_bbox.json"
+                },
+                {
+                    "video": "speakers/spk_0/central_crops/track_01.mp4",
+                    "crop_metadata": "speakers/spk_0/central_crops/track_01.json",
+                    "bbox": "speakers/spk_0/central_crops/track_01_bbox.json"
+                }
+            ]
+        }
+    },
+    "spk_2": {...},
+    "spk_3": {...},
+    "spk_4": {...},
+    "spk_5": {...}
+  }
+  ```
 
-Full-session central view video (360° perspective). All speakers appear.
+  - Each speaker-specific object contains detailed information about their associated data from both `ego` and `central` views. Note: `ego` only provided in the train set.
 
-* **Frame rate**: 25 fps.
-* **Resolution**: 4K.
-
-### 5. `transcript.vtt`
-
-WebVTT format file for the speaker’s speech transcript.
-
-```
-WEBVTT
-
-00:00:03.500 --> 00:00:05.200
-Hello everyone,
-
-00:00:06.000 --> 00:00:08.300
-Welcome to the meeting.
-```
-
-* Each cue consists of:
-
-  * **Time stamp**: `hh:mm:ss.mmm --> hh:mm:ss.mmm`
-  * **Text lines**: the utterance content. Multiple lines may appear per cue.
+  - `uem`: An object with `start` and `end` attributes (in seconds), marking the beginning and end of the primary conversation within the recording.
 
 
 ## Getting the data
 
-For obtaining the data, please refer to the download link at [this website](#). Note that a registration is needed to obtain the data and they should not be further distributed to not-registered individuals.
+For obtaining the data, please refer to the download link at [this website](https://huggingface.co/datasets/nguyenvulebinh/mcorec). Note that a registration is needed to obtain the data and they should not be further distributed to not-registered individuals.
