@@ -1,5 +1,5 @@
 import os, cv2, math, sys
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ ASD_MODEL.loadParameters("model-bin/finetuning_TalkSet.model")
 ASD_MODEL = ASD_MODEL.cuda().eval()
 print("Model loaded successfully.")
 
-def process_video(video_path, output_dir=None):
+def process_video(video_path, output_dir=None, frame_offset=0):
     """
     Process a single video file to detect active speakers and output ASD results.
     
@@ -87,7 +87,7 @@ def process_video(video_path, output_dir=None):
     final_scores = np.round((np.mean(np.array(allScore), axis=0)), 1).astype(float)
     
     # Create frame-wise scores dictionary
-    frame_scores = {frame_idx: round(float(score), 2) for frame_idx, score in enumerate(final_scores)}
+    frame_scores = {frame_idx + frame_offset: round(float(score), 2) for frame_idx, score in enumerate(final_scores)}
     
     # Save results
     output_json = os.path.join(output_dir, f"{video_name}_asd.json")
@@ -103,7 +103,13 @@ def main():
     parser.add_argument('--output_dir', type=str, default=None, help='Directory to save output JSON (optional)')
     opt = parser.parse_args()
     
-    output_path = process_video(opt.video, opt.output_dir)
+    video_info = opt.video.replace(".mp4", ".json")
+    frame_offset = 0
+    if os.path.exists(video_info):
+        with open(video_info, 'r') as f:
+            video_data = json.load(f)
+        frame_offset = video_data.get("frame_start", 0)
+    output_path = process_video(opt.video, opt.output_dir, frame_offset)
     print(f"ASD results saved to: {output_path}")
 
 if __name__ == "__main__":

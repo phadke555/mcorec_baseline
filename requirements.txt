@@ -13,4 +13,5 @@ wandb==0.19.1
 python_speech_features==0.6
 opencv-python==4.10.0.84
 scikit-image==0.25.2
+ffmpeg-python==0.2.0
 webvtt-py

@@ -8,6 +8,7 @@ import warnings
 
 from src.ibug.face_alignment import FANPredictor
 from src.ibug.face_detection import RetinaFacePredictor
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
@@ -23,7 +24,7 @@ class LandmarksDetector:
 
     def __call__(self, video_frames):
         landmarks = []
-        for frame in video_frames:
+        for frame in tqdm(video_frames, desc="Detecting landmarks"):
             detected_faces = self.face_detector(frame, rgb=False)
             face_points, _ = self.landmark_detector(frame, detected_faces, rgb=True)
             if len(detected_faces) == 0:

@@ -1,6 +1,6 @@
 import os
 os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from src.dataset.avhubert_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
 from src.tokenizer.spm_tokenizer import TextTransform
 from src.avhubert_avsr.avhubert_avsr_model import AVHubertAVSR, get_beam_search_decoder

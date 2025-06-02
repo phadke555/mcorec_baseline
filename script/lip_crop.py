@@ -1,5 +1,5 @@
 import os, sys
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.retinaface.detector import LandmarksDetector
 from src.retinaface.video_process import VideoProcess
@@ -72,12 +72,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Active Speaker Detection")
     parser.add_argument('--video', type=str, required=True, help='Path to input video file')
-    parser.add_argument('--output_dir', type=str, default=None, help='Directory to save output lip segments')
     opt = parser.parse_args()
-    
-    if not os.path.exists(opt.output_dir):
-        os.makedirs(opt.output_dir, exist_ok=True)
-    
+        
     process_video(opt.video)
 
 
