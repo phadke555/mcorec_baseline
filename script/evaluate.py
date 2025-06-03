@@ -108,13 +108,12 @@ def main():
         for speaker, wer in speaker_to_wer.items():
             cluster_speaker_wer = 0.5 * wer + 0.5 * (1 - speaker_clustering_f1_score[speaker])
             cluster_speaker_to_wer[speaker] = cluster_speaker_wer
-        print(f"Cluster speaker to WER: {cluster_speaker_to_wer}")
+        print(f"Cluster-Weighted WER: {cluster_speaker_to_wer}")
         all_cluster_speaker_wer.extend(list(cluster_speaker_to_wer.values()))
 
-    print(f"Average conversation clustering F1 score: {sum(all_conversation_clustering_f1_score) / len(all_conversation_clustering_f1_score)}")
-    print(f"Average speaker WER: {sum(all_speaker_wer) / len(all_speaker_wer)}")
-    print(f"Average Speaker's WER based clustering: {sum(all_cluster_speaker_wer) / len(all_cluster_speaker_wer)}")
-
+    print(f"Average Conversation Clustering F1 score: {sum(all_conversation_clustering_f1_score) / len(all_conversation_clustering_f1_score)}")
+    print(f"Average Speaker WER: {sum(all_speaker_wer) / len(all_speaker_wer)}")
+    print(f"Average Cluster-Weighted WER: {sum(all_cluster_speaker_wer) / len(all_cluster_speaker_wer)}")
 
 if __name__ == "__main__":
     main()

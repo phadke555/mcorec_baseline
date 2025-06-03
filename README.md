@@ -230,9 +230,9 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
     # Speaker to WER: {'spk_0': 0.4405, 'spk_1': 0.6137, 'spk_2': 0.5257, 'spk_3': 0.5556, 'spk_4': 0.7073, 'spk_5': 0.7102}
     # Speaker clustering F1 score: {'spk_0': 1.0, 'spk_1': 1.0, 'spk_2': 1.0, 'spk_3': 1.0, 'spk_4': 1.0, 'spk_5': 1.0}
     # Cluster speaker to WER: {'spk_0': 0.22025, 'spk_1': 0.30685, 'spk_2': 0.26285, 'spk_3': 0.2778, 'spk_4': 0.35365, 'spk_5': 0.3551}
-    # Average conversation clustering F1 score: 1.0
-    # Average speaker WER: 0.5922
-    # Average Speaker's WER based clustering: 0.2961
+    # Average Conversation Clustering F1 score: 1.0
+    # Average Speaker WER: 0.5922
+    # Average Cluster-Weighted WER: 0.2961
 
 
     # Evaluating all sessions
@@ -244,9 +244,9 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
 
 The results for the baseline model on dev subset are the following:
 
-- Average Conversation clustering F1 score: 0.8553
+- Average Conversation Clustering F1 score: 0.8553
 - Average Speaker WER: 0.5674
-- Average Speaker's WER based clustering: 0.3651
+- Average Cluster-Weighted WER: 0.3651
 
 ## Acknowledgement
 
