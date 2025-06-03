@@ -17,7 +17,7 @@ Following this steps:
 
 ```sh
 # Clone the baseline code repo
-git clone https://github.com/nguyenvulebinh/mcorec_baseline.git
+git clone https://github.com/MCoRec/mcorec_baseline.git
 cd mcorec_baseline
 
 # Create Conda environment
