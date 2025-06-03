@@ -5,7 +5,7 @@ parent: CHiME-9 Task 1 - MCoRec
 nav_order: 3
 ---
 
-Summary of the rules for systems participating in the challenge:
+## Summary of the rules for systems participating in the challenge:
 
 - For building the system, it is allowed to use the training subset of MCoRec dataset and external data listed in the subsection Data and pre-trained models. If you believe there is some public dataset missing, you can propose it to be added until the deadline as specified in the schedule.
 - The development subset of MCoRec can be used for evaluating the system throughout the challenge period, but not for training or automatic tuning of the systems.
@@ -14,38 +14,96 @@ If your system does not comply with these rules (e.g. by using a private dataset
 
 ## Evaluation
 
-### Given:
+### Overview
 
-- A video containing group conversations.
-- Bounding boxes (bbox) for n interested speakers, indicating their locations throughout the video.
+The system is evaluated on **three main metrics**:
 
-### System's output:
+1. **Individual Speaker's WER**
+2. **Conversation Clustering Performance (Pairwise F1 Score)**
+3. **Cluster-Weighted WER** - *Primary Evaluation Metric*
 
-- A .vtt file for each speaker, containing their speech content, time-aligned to the video.
-- A clustering output that indicates how many distinct conversations are present and which speakers belong to which conversation cluster.
+---
 
-### Metrics:
+### 1. Individual Speaker's WER
 
-The system output will be evaluated on two key aspects:
+- **Output Required:**  
+  For each speaker, the system must produce a `.vtt` file containing their speech transcript, time-aligned to the video.
 
-1. Word Error Rate (WER) for Individual Speakers
+- **Reference:**  
+  Ground-truth `.vtt` files are provided for each speaker.
 
-    - Each .vtt file will be evaluated against ground-truth transcriptions for the corresponding speaker.
-    - Standard WER will be computed per speaker.
-    - The average WER across all speakers will be used.
+- **Evaluation Steps:**
+    - For each speaker:
+        - Extract the reference and hypothesis transcripts from their respective `.vtt` files.
+        - Restrict evaluation to the time intervals specified by the speaker's UEM (Un-partitioned Evaluation Map) in the session metadata.
+        - Normalize the text (including removal of disfluencies and standard text normalization).
+    - Compute the WER for each speaker:
+        - WER = (Substitutions + Deletions + Insertions) / Number of words in reference
+    - Average WER is calculated across all speakers across all sessions.
 
-2. Conversation Clustering Performance
+---
 
-    - The goal is to identify how many independent conversations took place and correctly group the involved speakers.
-    - For evaluation, each speaker is assigned a cluster ID, indicating the conversation they belong to.
-    - The clustering performance will be evaluated using pairwise F1 score, defined as follows:
+### 2. Conversation Clustering Performance (Pairwise F1 Score)
 
-        - For all pairs of speakers, consider whether the system and the ground truth agree on whether the pair is in the same conversation.
-        - Compute precision and recall:
-            - Precision = (# correctly predicted same-cluster pairs) / (# predicted same-cluster pairs)
-            - Recall = (# correctly predicted same-cluster pairs) / (# actual same-cluster pairs)
-            - F1 score = 2 * (Precision * Recall) / (Precision + Recall)
+- **Output Required:**  
+  The system must output a mapping (`speaker_to_cluster.json`) assigning each speaker to a conversation cluster (cluster ID).
 
+- **Reference:**  
+  Ground-truth cluster assignments are provided for each speaker.
+
+- **Evaluation Steps:**
+    1. For all unordered pairs of speakers in a session:
+        - Determine if the pair is in the same cluster in both the system output and the ground truth.
+    2. Compute the following:
+        - **True Positives (TP):** Pairs correctly predicted to be in the same cluster.
+        - **False Positives (FP):** Pairs predicted to be in the same cluster but are not in the ground truth.
+        - **False Negatives (FN):** Pairs in the same cluster in the ground truth but not predicted as such.
+    3. Calculate:
+        - **Precision:** TP / (TP + FP)
+        - **Recall:** TP / (TP + FN)
+        - **Pairwise F1 Score:** 2 * (Precision * Recall) / (Precision + Recall)
+    4. **Average F1 Score** is reported across all sessions.
+
+---
+
+### 3. Cluster-Weighted WER - *Primary Metric*
+
+This is the **main evaluation metric** that combines both transcription and clustering performance at the speaker level.
+
+#### 3.1 Per-Speaker Clustering F1 Score
+
+For each speaker, a clustering F1 score is computed using a one-vs-rest approach:
+
+- **For speaker i:**
+    - Consider all other speakers j in the same session
+    - For each pair (i, j):
+        - Check if they are in the same cluster in the ground truth: `true_same`
+        - Check if they are in the same cluster in the prediction: `pred_same`
+    - Count:
+        - **TP:** Cases where `pred_same = True` and `true_same = True`
+        - **FP:** Cases where `pred_same = True` and `true_same = False`
+        - **FN:** Cases where `pred_same = False` and `true_same = True`
+    - Compute speaker i's clustering F1:
+        - **Precision:** TP / (TP + FP)
+        - **Recall:** TP / (TP + FN)
+        - **F1:** 2 * (Precision * Recall) / (Precision + Recall)
+
+#### 3.2 Combined Metric Calculation
+
+For each speaker:
+
+```math
+\text{Cluster-Weighted WER} = 0.5 \times \text{Speaker\_WER} + 0.5 \times (1 - \text{Per\_Speaker\_Clustering\_F1})
+```
+
+This metric:
+- Ranges from 0 (perfect) to 1 (worst possible)
+- Equally weights transcription accuracy and clustering accuracy
+- **Lower values are better**
+
+The **final primary metric** is the average Cluster-Weighted WER across all speakers in all sessions.
+
+---
 
 
 ## External data and pre-trained models
@@ -54,6 +112,9 @@ Besides the MCoRec dataset published with this challenge, the participants are a
 
 Participants may use these publicly available datasets for building the systems:
 
+
+- [AVA](https://research.google.com/ava/download.html#ava_active_speaker_download)
+- [Lip Reading Sentences 2](https://www.robots.ox.ac.uk/~vgg/data/lip_reading/lrs2.html)
 - [AMI](https://groups.inf.ed.ac.uk/ami/corpus/)
 - [LibriSpeech](https://www.openslr.org/12/)
 - [TEDLIUM](https://www.openslr.org/51/)
@@ -74,7 +135,13 @@ Participants may use these publicly available datasets for building the systems:
 - [DNS challenge noises](https://github.com/microsoft/DNS-Challenge)
 
 In addition, following pre-trained models may be used:
-
+- Audio-Visual Speech Recognition:
+  - [AV-HuBERT](https://github.com/facebookresearch/av_hubert)
+  - [MuAViC](https://github.com/facebookresearch/muavic)
+    - [MuAViC Huggingface](https://huggingface.co/nguyenvulebinh/AV-HuBERT)
+  - [Auto-AVSR](https://github.com/mpc001/auto_avsr)
+  - [Whisper-Flamingo](https://github.com/roudimit/whisper-flamingo)
+  - [(B)RAVEn](https://github.com/ahaliassos/raven)
 - Wav2vec:
   - [S3PRL](https://s3prl.github.io/s3prl/tutorial/upstream_collection.html)
     - [wav2vec-large](https://s3prl.github.io/s3prl/tutorial/upstream_collection.html#wav2vec-large)
