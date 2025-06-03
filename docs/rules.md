@@ -52,17 +52,17 @@ The system is evaluated on **three main metrics**:
   Ground-truth cluster assignments are provided for each speaker.
 
 - **Evaluation Steps:**
-    1. For all unordered pairs of speakers in a session:
+    - For all unordered pairs of speakers in a session:
         - Determine if the pair is in the same cluster in both the system output and the ground truth.
-    2. Compute the following:
+    - Compute the following:
         - **True Positives (TP):** Pairs correctly predicted to be in the same cluster.
         - **False Positives (FP):** Pairs predicted to be in the same cluster but are not in the ground truth.
         - **False Negatives (FN):** Pairs in the same cluster in the ground truth but not predicted as such.
-    3. Calculate:
+    - Calculate:
         - **Precision:** TP / (TP + FP)
         - **Recall:** TP / (TP + FN)
         - **Pairwise F1 Score:** 2 * (Precision * Recall) / (Precision + Recall)
-    4. **Average F1 Score** is reported across all sessions.
+    - **Average F1 Score** is reported across all sessions.
 
 ---
 
