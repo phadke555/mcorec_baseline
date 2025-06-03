@@ -5,13 +5,15 @@ parent: CHiME-9 Task 1 - MCoRec
 nav_order: 1
 ---
 
-The main [MCoRec dataset](#) for this task consists of recording sessions between multiple conversation partners using phones and 360 camera. Phone will be used to record egocentric view of each participant while 360 camera will be used to record every participants at once. The collected data is split into training, development, and evaluation subsets. The evaluation subset will remain hidden until shortly before the final submission of the systems. In the baseline system, a training subset is used to build the system, while the results are reported on the development subset. The participants can use the training subsets to build their systems and the development set to evaluate and compare to the baseline. No training or automatic tuning is allowed on the development set.
+The main [MCoRec dataset](#) for this task consists of recording sessions between multiple conversation partners using phones and 360 camera. Phone will be used to record egocentric view of each participant while 360 camera will be used to record every participants at once. The collected data is split into training, development, and evaluation subsets. The evaluation subset will remain hidden until shortly before the final submission of the systems. The participants can use the train set to build their systems and the dev set to evaluate and compare to the baseline. No training or automatic tuning is allowed on the development set.
 
-|             | number of sessions | number of conversations | duration | avg duration per recording | number of speakers |
-| ----------- | :--------------------:| :--------------------: | :--------: | :--------------------------: | :------------------: |
-| train       | 56              |  120  | 5.6 h    | 6 min                      | 20                 |
-| dev         | 25               | 60  | 2.5 h   | 6 min                      | 12                 |
-| eval        | 69                | 157 | 6.9 h    | 6 min                      | 24                 |
+|             | # sessions | # conversations | duration | session's duration | # speakers   | # speakers per conversation   | # conversations per session   |
+| ----------- | :---------:| :-------------: | :------: | :----------------: | :----------: | :---------------------------: | :---------------------------: |
+| train       | 56         |        120      |   5.6 h  |        6 min       |      20      |           2 - 4               |           1 - 4               |
+| dev         | 25         |        60       |   2.5 h  |        6 min       |      12      |           2 - 4               |           1 - 4               |
+| eval        | 69         |        157      |   6.9 h  |        6 min       |      24      |           2 - 4               |           1 - 4               |
+
+The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on TBU). 
 
 Besides the MCoRec dataset, public datasets as listed in the [Rules](rules) page can be used.
 
@@ -19,7 +21,15 @@ In addition to the MCoRec dataset, we also publish [AVYT dataset](#), which can 
 
 ## Description of the MCoRec data
 
-The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on TBU). One recording session features a fews conversations, each have two or more participants. One 360 camera place in the middle of the room to capture the central view which contants every participants. Each participant have a phone to capture the egocentric view. The phone placed close to and in front of the speaker, offering a clear view of the speaker’s face. For system development and evaluation only the recordings of central view are provided. Note that the number of people show in the central can be bigger than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
+One recording session features a fews conversations, each have two or more participants. One 360 camera place in the middle of the room to capture the central view which contants every participants. The image below shows a recording session with 8 participants engaged in 4 separate conversations, each consisting of 2 speakers.
+
+![](images/central_view.png)
+
+
+Each participant have a phone to capture the egocentric view. The phone placed close to and in front of the speaker, offering a clear view of the speaker’s face. 
+
+
+Note that the number of people show in the central can be bigger than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
 
 ## Detailed desciption of data structure and formats
 
@@ -67,8 +77,8 @@ session_id
 
     ```json
     { 
-    "0": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},     
-    "1": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},
+      "0": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},     
+      "1": { "x1": 3893.5127, "y1": 910.7231, "x2": 4024.8086, "y2": 1088.9075},
       "...": { /* additional frames */ }
     }
     ```

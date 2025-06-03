@@ -1,8 +1,8 @@
 # CHiME-9 Task 1 - MCoRec baseline
-### ASR for multimodal conversations in smart glasses
-This repository contains the baseline system for CHiME-9 challenge, Task 1 MCoRec. For information on how to participate in the challenge and how to get the development and evaluation datasets, please refer to the [challenge website](https://www.chimechallenge.org/current/task1/index). 
 
-This README is a guide on how to install and run the baseline system for the challenge. This baseline system uses a pre-trained model.
+### Multi-Modal Context-aware Recognition
+
+This repository contains the baseline system for CHiME-9 challenge, Task 1 MCoRec. For information on how to participate in the challenge and how to get the development and evaluation datasets, please refer to the [challenge website](https://www.chimechallenge.org/current/task1/index). 
 
 ## Sections
 1. <a href="#install">Installation</a>
@@ -13,7 +13,7 @@ This README is a guide on how to install and run the baseline system for the cha
 
 ## <a id="install">1. Installation </a>
 
-Clone and install enviroment and download pre-trained model
+Following this steps:
 
 ```sh
 # Clone the baseline code repo
@@ -119,20 +119,43 @@ unzip dev_without_central_videos.zip
     └── src
     ```
 
-    `data-bin/`: This is where the MCoRec dataset (downloaded in Section 2) should be placed. It's organized into dev, train, and eval subsets. Each session folder (e.g., session_132) contains the raw and preprocessed data required for inference and evaluation.
+    `data-bin/`: This is where the MCoRec dataset (downloaded in Section 2) should be placed. It's organized into dev, train, and eval subsets. Each session folder (e.g., `session_132`) contains the raw and preprocessed data required for inference and evaluation.
 
     `model-bin/`: Contains the pre-trained model components, which were downloaded and unzipped during the [Section 1](#1-installation).
     
-    `script/`: Contains the main Python scripts for performing tasks such as inference (inference.py), evaluation (evaluate.py), and data preprocessing (asd.py, lip_crop.py).
+    `script/`: Contains the main Python scripts for performing tasks such as inference (`inference.py`), evaluation (`evaluate.py`), and data preprocessing (`asd.py`, `lip_crop.py`).
 
     `src/`: Contains the underlying Python codebase and modules for the MCoRec baseline system.
 
 - Running Inference
 
-    The `inference.py` script processes a session (or multiple sessions) and generates ASR output.
+    The `inference.py` script processes a session (or multiple sessions) and generates system output.
 
     * **Input**: The path to a session folder (e.g., `data-bin/dev/session_132/`) or a pattern matching multiple session folders.
     * **Output**: An `output` folder will be created inside each processed session directory (e.g., `data-bin/dev/session_132/output/`). This folder will contain the system's hypotheses, structured similarly to the ground truth `labels` folder.
+
+        - `speaker_to_cluster.json`: This file maps each speaker ID (e.g., spk_0, spk_1) to a conversation cluster ID. Example:
+            ```json
+            {
+                "spk_0": 0,
+                "spk_1": 0,
+                "spk_2": 1,
+                "spk_3": 1,
+                "spk_4": 2,
+                "spk_5": 2
+            }
+            ```  
+
+        - `spk_0.vtt, spk_1.vtt, ... spk_5.vtt`: These are WebVTT (Web Video Text Tracks) files, one for each target speaker in the session (identified as spk_0, spk_1, etc.). Each `.vtt` file contains the time-stamped transcriptions of the speech for that specific speaker. Example:
+            ```webvtt
+            WEBVTT
+
+            00:00:21.039 --> 00:00:23.235
+            So, What's your favorite superhero?
+
+            00:00:25.050 --> 00:00:30.354
+            Favourite superhero? Oh, DC, DC
+            ```
 
     * **Commands:**
 
@@ -147,14 +170,14 @@ unzip dev_without_central_videos.zip
         # Example: python script/inference.py --session_dir "data-bin/dev/*"
         ```
 
-- Data Preprocessing Details (Optional)
+- Running data preprocessing (Optional)
 
     The MCoRec dataset provided for the challenge typically comes with pre-generated files necessary for the baseline system. Specifically, within each speaker's `central_crops` folder (e.g., `data-bin/dev/session_132/speakers/spk_4/central_crops/`), you will find multiple video tracks (e.g., `track_00.mp4`, `track_01.mp4`). These are 96x96 face crop videos of the target speaker (e.g., `spk_4`).
 
     For each of these tracks (e.g., `track_00.mp4`), two important processed files are expected by the inference script:
 
-    * `track_00_asd.json`: Contains active speaker detection scores for each frame of the corresponding track video. These scores are used to determine when a speaker is talking, allowing the audio-visual speech recognition system to run only during the speaking segments.
-    * `track_00_lip.av.mp4`: A video similar to the face track, but specifically cropped around the lip region.
+    * `track_xx_asd.json`: Contains active speaker detection scores for each frame of the corresponding track video. These scores are used to determine when a speaker is talking, allowing the audio-visual speech recognition system to run only during the speaking segments.
+    * `track_xx_lip.av.mp4`: A video similar to the face track, but specifically cropped around the lip region.
 
     **The provided dataset should already include these `_asd.json` and `_lip.av.mp4` files.** The scripts below are available if you wish to understand how they are generated, regenerate them, or process custom data.
 
