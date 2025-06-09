@@ -3,6 +3,7 @@ import os
 import torch
 import torchaudio
 import torchvision
+from torchcodec.decoders import VideoDecoder, AudioDecoder
 import random
 from dataclasses import dataclass
 from src.tokenizer.spm_tokenizer import TextTransform
@@ -30,29 +31,40 @@ def load_video(path, start_time=0, end_time=None):
     """
     rtype: torch, T x C x H x W
     """
-    vid_rgb = torchvision.io.read_video(path, start_pts=start_time, end_pts=end_time, pts_unit="sec", output_format="THWC")[0]
+    video_decoder = VideoDecoder(path, dimension_order="NHWC")
+    if end_time is None:
+        end_time = video_decoder.metadata.duration_seconds
+    vid_rgb = video_decoder.get_frames_played_in_range(start_time, end_time).data
+    # vid_rgb = torchvision.io.read_video(path, start_pts=start_time, end_pts=end_time, pts_unit="sec", output_format="THWC")[0]
     frames = [cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) for frame in vid_rgb.numpy()]
     vid = torch.from_numpy(np.stack(frames)).unsqueeze(1)
     return vid
 
 
-def load_audio(path, start_time=0, end_time=None):
-    """
-    rtype: torch, T x 1
-    """
-    if start_time == 0 and end_time is None:
-        frame_offset = 0
-        num_frames = -1
-    else:
-        frame_offset = int(start_time * 16000)
-        num_frames = int((end_time - start_time) * 16000)
+# def load_audio(path, start_time=0, end_time=None):
+#     """
+#     rtype: torch, T x 1
+#     """
+#     if start_time == 0 and end_time is None:
+#         frame_offset = 0
+#         num_frames = -1
+#     else:
+#         frame_offset = int(start_time * 16000)
+#         num_frames = int((end_time - start_time) * 16000)
 
-    if path.endswith(".mp4") and os.path.exists(path.replace(".mp4", ".wav")):
-        waveform, sample_rate = torchaudio.load(path.replace(".mp4", ".wav"), frame_offset=frame_offset, num_frames=num_frames, normalize=True)
-    else:
-        waveform, sample_rate = torchaudio.load(path, frame_offset=frame_offset, num_frames=num_frames, normalize=True)
-    assert sample_rate == 16000
-    return waveform.transpose(1, 0)
+#     if path.endswith(".mp4") and os.path.exists(path.replace(".mp4", ".wav")):
+#         waveform, sample_rate = torchaudio.load(path.replace(".mp4", ".wav"), frame_offset=frame_offset, num_frames=num_frames, normalize=True)
+#     else:
+#         waveform, sample_rate = torchaudio.load(path, frame_offset=frame_offset, num_frames=num_frames, normalize=True)
+#     assert sample_rate == 16000
+#     return waveform.transpose(1, 0)
+
+def load_audio(path, start_time=0, end_time=None):
+    audio_decoder = AudioDecoder(path)
+    if end_time is None:
+        end_time = audio_decoder.metadata.duration_seconds_from_header
+    waveform = audio_decoder.get_samples_played_in_range(start_time, end_time).data
+    return waveform.transpose(1, 0)  # T x 1
 
 
 class FBanksAndStack(torch.nn.Module):
@@ -174,10 +186,10 @@ class AddMultiSpk(torch.nn.Module):
         num_interferer = random.choice(self.interferer_spk)
         interferer_signal = None
         for _ in range(num_interferer):
-            interferer = random.choice(self.speech_dataset)
-            if 25 * 2 <= interferer["length"] <= 25 * 10:
-                # print(interferer)
-                interferer = load_audio(interferer["video"])
+            interferer = load_audio(random.choice(self.speech_dataset)['video'])
+            interferer_length = interferer.size(0) / 16000
+            # print(interferer, interferer_length)
+            if 2 <= interferer_length <= 10:
                 interferer = cut_or_pad(interferer, len(speech))
                 if interferer_signal is None:
                     interferer_signal = interferer
@@ -187,7 +199,7 @@ class AddMultiSpk(torch.nn.Module):
         
         if interferer_signal is None:
             return speech
-        
+        # print(f"Adding {num_interferer} interferer(s) to speech with length {speech_length:.2f}s")
         snr_level = torch.tensor([random.choice(self.snr_levels)])
         speech = torchaudio.functional.add_noise(speech.t(), interferer_signal.t(), snr_level).t()
         

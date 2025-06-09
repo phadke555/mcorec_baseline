@@ -4,12 +4,37 @@
 
 This repository contains the baseline system for CHiME-9 challenge, Task 1 MCoRec. For information on how to participate in the challenge and how to get the development and evaluation datasets, please refer to the [challenge website](https://www.chimechallenge.org/current/task1/index). 
 
+## About the Challenge
+
+**CHiME-9 Task 1: Multi-Modal Context-aware Recognition (MCoRec)** addresses the challenging problem of understanding multiple concurrent conversations in a single room environment. The task requires systems to process a single 360° video and audio recording where multiple separate conversations are happening simultaneously, and to both **transcribe each speaker's speech** and **identify which speakers belong to the same conversation**.
+
+### Key Challenge Features
+- **Multiple concurrent conversations** (up to 4) with up to 8 active speakers
+- **High speech overlap ratios** reaching up to 100% due to simultaneous conversations  
+- **Single 360° camera and microphone** capturing all participants from a central viewpoint
+- **Real, unscripted conversations** covering everyday topics
+- **Combined transcription and clustering challenge** requiring both accurate speech recognition and conversation grouping
+
+### Evaluation Metrics
+Systems are evaluated on three complementary metrics:
+1. **Individual Speaker's WER** - Word Error Rate for each speaker's transcription
+2. **Conversation Clustering Performance** - Pairwise F1 score for grouping speakers
+3. **Cluster-Weighted WER** (*Primary Metric*) - Combined metric weighing both transcription and clustering performance
+
+### Documentation
+For detailed information about the challenge, please refer to:
+- **[Challenge Overview](docs/overview.md)** - Complete challenge description and scenario details
+- **[Data Description](docs/data.md)** - Dataset structure, formats, and download instructions  
+- **[Baseline System](docs/baseline.md)** - Architecture and components of the baseline system
+- **[Challenge Rules](docs/rules.md)** - Participation rules, allowed datasets, and evaluation details
+
 ## Sections
 1. <a href="#install">Installation</a>
 2. <a href="#dataset">Download MCoRec dataset</a>
 3. <a href="#running">Running the baseline system</a>
 4. <a href="#evaluation">Evaluation</a>
 5. <a href="#results">Results</a>
+6. <a href="#finetuning">Finetuining AVSR model</a>
 
 ## <a id="install">1. Installation </a>
 
@@ -245,8 +270,74 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
 The results for the baseline model on dev subset are the following:
 
 - Average Conversation Clustering F1 score: 0.8553
-- Average Speaker WER: 0.5674
-- Average Cluster-Weighted WER: 0.3651
+- Average Speaker WER: 0.5474
+- Average Cluster-Weighted WER: 0.3550
+
+## <a id="finetuning">6. Finetuining AVSR model</a>
+
+The baseline system includes a trained model for the Audio-Visual Speech Recognition (AVSR) component. The AVSR model is based on AV-HuBERT CTC/Attention which uses AV-HuBERT as the encoder and integrates a projection layer with a Transformer decoder using joint CTC/Attention training. Details of the model are presented in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
+
+### Model Architecture
+
+The AVSR model combines audio and visual modalities:
+- **Encoder**: Pre-trained AV-HuBERT large model (`nguyenvulebinh/avhubert_encoder_large_noise_pt_noise_ft_433h`)
+- **Decoder**: Transformer decoder with CTC/Attention joint training
+- **Tokenization**: SentencePiece unigram tokenizer with 5000 vocabulary units
+- **Input**: Video frames are cropped to the mouth region of interest using a 96 × 96 bounding box, while the audio is sampled at a 16 kHz rate
+
+### Training Data
+
+The model is trained on multiple large-scale datasets that have been preprocessed and are ready for the training pipeline. All datasets are hosted on Hugging Face at [nguyenvulebinh/AVYT](https://huggingface.co/datasets/nguyenvulebinh/AVYT) and include:
+
+| Dataset | Size |
+|---------|------|
+| **LRS2** | ~145k samples |
+| **VoxCeleb2** | ~540k samples |
+| **AVYT** | ~717k samples |
+| **AVYT-mix** | ~483k samples |
+
+Additional information about these datasets can be found in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
+
+**Dataset Features:**
+- **Preprocessed**: All audio-visual data is pre-processed and ready for direct input to the training pipeline
+- **Multi-modal**: Each sample contains synchronized audio and video (mouth crop) data
+- **Labeled**: Text transcriptions for supervised learning
+
+The training pipeline automatically handles dataset loading and loads data in [streaming mode](https://huggingface.co/docs/datasets/stream). However, to make training faster and more stable, it's recommended to download all datasets before running the training pipeline. The storage needed to save all datasets is approximately 1.46 TB.
+
+### Training Process
+
+The training script is available at `script/train.py`.
+
+**Multi-GPU Distributed Training:**
+```sh
+# Set environment variables for distributed training
+export NCCL_DEBUG=WARN
+export OMP_NUM_THREADS=1
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+
+# Run with torchrun for multi-GPU training
+torchrun --nproc_per_node 4 script/train.py
+```
+
+**Model Output:**
+The trained model will be saved by default in `model-bin/avhubert_avsr_cocktail/`.
+
+#### Custom Configuration
+
+You can modify training parameters by editing the configuration section in `script/train.py`:
+
+```python
+# Adjustable training parameters
+
+batch_size = 6                    # Batch size per device
+max_steps = 200000               # Total training steps
+learning_rate = 1e-4             # Initial learning rate
+warmup_steps = 4000              # Learning rate warmup steps
+gradient_accumulation_steps = 2   # Gradient accumulation
+save_steps = 2000                # Checkpoint saving frequency
+eval_steps = 2000                # Evaluation frequency
+```
 
 ## Acknowledgement
 

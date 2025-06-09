@@ -1,7 +1,6 @@
 import os
 import sys
 os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
-# os.environ["CUDA_VISIBLE_DEVICES"] = "5"
 import torch
 from datasets import load_from_disk
 from src.dataset.avhubert_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
@@ -13,9 +12,79 @@ from src.custom_trainer import AVSRTrainer
 from transformers.trainer_utils import IntervalStrategy
 from torchsummary import summary
 import safetensors.torch
+import datasets
 
 # NCCL_DEBUG=WARN OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=3,5 torchrun --nproc_per_node 2 train.py
-# os.environ['WANDB_PROJECT'] = 'avsr'
+# os.environ['WANDB_PROJECT'] = 'mcorec'
+
+
+def load_avsr_dataset(cache_dir='data-bin/cache', streaming=True):
+    def format_sample(sample):
+        sample['label'] = str(sample['label'], encoding='utf-8')
+        sample['length'] = int(sample['length'])
+        sample['sample_id'] = str(sample['sample_id'], encoding='utf-8')
+        return sample
+    
+    # Load dataset    
+    lrs2 = datasets.load_dataset("nguyenvulebinh/AVYT", "lrs2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+    vox2 = datasets.load_dataset("nguyenvulebinh/AVYT", "vox2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+    avyt = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+    avyt_mix = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt-mix", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+    
+    map_datasets = {
+        "lrs2": {
+            "probabilities": 0.3,
+            "dataset": {
+                "train": datasets.concatenate_datasets([
+                    lrs2["train"], 
+                    lrs2["pretrain"]
+                ]),
+                "valid": datasets.concatenate_datasets([
+                    lrs2["valid"], 
+                    lrs2["test_snr_0_interferer_2"]
+                ])
+            },
+        },
+        "vox2": {
+            "probabilities": 0.2,
+            "dataset": {
+                "train": vox2["dev"],
+                "valid": None,
+            },
+        },
+        "avyt": {
+            "probabilities": 0.25,
+            "dataset": {
+                "train": datasets.concatenate_datasets([
+                    avyt['talking'], 
+                    avyt['silent']
+                ]),
+                "valid": None,
+            },
+        },
+        "avyt-mix": {
+            "probabilities": 0.25,
+            "dataset": {
+                "train": avyt_mix["train"],
+                "valid": avyt_mix["test"],
+            },
+        },
+    }
+    
+    train_dataset = datasets.interleave_datasets([item['dataset']['train'] for item in map_datasets.values()], 
+                                                 seed=101,
+                                                 probabilities=[item['probabilities'] for item in map_datasets.values()], stopping_strategy='all_exhausted')
+    valid_dataset = datasets.interleave_datasets([item['dataset']['valid'] for item in map_datasets.values()  if item['dataset']['valid'] is not None],
+                                                 stopping_strategy='first_exhausted')
+    
+    train_dataset = train_dataset.map(format_sample)
+    valid_dataset = valid_dataset.map(format_sample)
+    
+    # load lrs2 for interference speech
+    # interference_speech = None
+    print("Loading interference speech dataset. Actual file around 10GB need to download. This may take a while...")
+    interference_speech = datasets.load_dataset("nguyenvulebinh/AVYT", "lrs2", cache_dir=cache_dir, data_files='lrs2/lrs2-train-*.tar').remove_columns(['__key__', '__url__'])['train']
+    return train_dataset, valid_dataset, interference_speech
 
 if __name__ == "__main__":
     # Load text transform
@@ -41,16 +110,12 @@ if __name__ == "__main__":
     
     
     # Load dataset
-    raw_data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/dummy")
-    metadata_path = os.path.join(raw_data_path, "metadata")
-    dataset = load_from_disk(metadata_path).map(lambda x: {"video": os.path.join(raw_data_path, x["video"])})
-    train_dataset = dataset["train"]
-    valid_dataset = dataset["test"]
+    train_dataset, valid_dataset, interference_dataset = load_avsr_dataset()
     
     
     train_av_data_collator = DataCollator(
         text_transform=text_transform,
-        audio_transform=AudioTransform(subset="train", speech_dataset=train_dataset),
+        audio_transform=AudioTransform(subset="train", speech_dataset=interference_dataset),
         video_transform=VideoTransform(subset="train"),
     )
     valid_av_data_collator = DataCollator(
@@ -65,15 +130,17 @@ if __name__ == "__main__":
     summary(avsr_model)
     
     ############ Debugging ############
+    # # model_name = "./model-bin/avsr_cocktail"
+    # # avsr_model = AVHubertAVSR.from_pretrained(model_name)
     # os.environ["CUDA_VISIBLE_DEVICES"] = "5"
     # avsr_model.eval().cuda()
-    # batch_size = 2
+    # batch_size = 6
     # batch_samples = []
-    # for i in range(len(train_dataset)):
-    #     batch_samples.append(train_dataset[i])
+    # for sample in train_dataset:
+    #     batch_samples.append(sample)
     #     if len(batch_samples) == batch_size:
     #         break
-    # features = valid_av_data_collator(batch_samples)
+    # features = train_av_data_collator(batch_samples)
     # for key in features:
     #     if isinstance(features[key], torch.Tensor):
     #         if key in ["videos", "audios"]:
@@ -85,7 +152,7 @@ if __name__ == "__main__":
     ##################################
 
     
-    batch_size = 2
+    batch_size = 6
     max_steps = 200000
     gradient_accumulation_steps = 2
     save_steps = 2000
@@ -93,26 +160,26 @@ if __name__ == "__main__":
     log_interval = 25
     learning_rate = 1e-4
     warmup_steps = 4000
-    checkpoint_name = "avhubert_avvn_noisy"
+    checkpoint_name = "avhubert_avsr_cocktail"
     output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"model-bin/{checkpoint_name}")
     
     training_args = TrainingArguments(
         output_dir=output_dir,
         logging_dir=os.path.join(output_dir, "log"),
-        group_by_length=True,
-        length_column_name='length',
+        # group_by_length=True,
+        # length_column_name='length',
         label_names = ["labels"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         # auto_find_batch_size = True,
         # max_grad_norm=0.1,
-        evaluation_strategy=IntervalStrategy.STEPS,
+        eval_strategy=IntervalStrategy.STEPS,
         save_strategy=IntervalStrategy.STEPS,
         max_steps = max_steps,
         gradient_accumulation_steps=gradient_accumulation_steps,
         metric_for_best_model='loss',
         greater_is_better=False,
-        # bf16=True,
+        fp16=True,
         gradient_checkpointing=False, 
         remove_unused_columns=False,
         dataloader_num_workers=10,
@@ -123,7 +190,7 @@ if __name__ == "__main__":
         learning_rate=learning_rate,
         weight_decay=0.005,
         warmup_steps=warmup_steps,
-        save_total_limit=50,
+        save_total_limit=500,
         ignore_data_skip=True,
         dataloader_drop_last=True,
         dataloader_pin_memory=True,

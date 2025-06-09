@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Data Preprocess
+title: Data Collection
 parent: CHiME-9 Task 1 - MCoRec
 nav_order: 2
 ---
