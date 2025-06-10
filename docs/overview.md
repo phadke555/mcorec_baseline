@@ -32,6 +32,9 @@ The MCoRec dataset captures natural conversational scenarios where 2-8 participa
 * **Lapel Microphones**: Close-talking microphones connected to smartphones via adapters, positioned near each speaker's mouth for enhanced audio clarity
 * **Seating Arrangement**: All speakers sit around a table with varying distances depending on table size
 * **Session Synchronization**: Moderator whistle cues enable precise alignment of recordings from multiple devices
+* **Recording Duration**: Each session typically lasts approximately 6 minutes.
+
+***Note***: Individual smartphone recordings and lapel microphone audio are **only available for the training set** to facilitate system development. The development and evaluation sets contain **only the central 360° video and audio**, as the core challenge focuses on processing the difficult multi-speaker, multi-conversation scenario captured by the central camera setup with high speech overlap and acoustic complexity.
 
 ## Task Description
 
@@ -43,8 +46,6 @@ The challenge consists of a single comprehensive track requiring participants' s
 **Input**: Single 360° video and its corresponding audio track, along with bounding boxes to identify the list of target participants. 
 
 **Output**: Per-speaker transcriptions and conversation cluster assignments
-
-***Note***: For the training set only, to facilitate system development, each speaker also provides a close-up egocentric video recorded with their smartphone, with audio captured via a lapel microphone for higher-quality, close-talk audio signals.
 
 
 ## Evaluation and Ranking

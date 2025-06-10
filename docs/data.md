@@ -5,11 +5,17 @@ parent: CHiME-9 Task 1 - MCoRec
 nav_order: 1
 ---
 
-The [MCoRec dataset](#) contains video recording sessions. A single recording session typically features multiple conversations, each involving two or more participants. A 360° camera, placed in the middle of the room, captures the central view which contains all participants. Each session can involve a maximum of 8 active speakers and up to 4 simultaneous conversations. With multiple concurrent discussions, the speech overlap ratio in the mixed audio can reach 100%. The image below shows an example of a recording session with 6 participants engaged in 3 separate conversations, each consisting of 2 speakers.
+The [MCoRec dataset](#) contains video recording sessions. A single recording session typically features multiple conversations, each involving two or more participants. A 360° camera, placed in the middle of the room, captures the central view which contains all participants. The audio for the sessions is also captured by the microphone integrated into the 360° camera. Each session can involve a maximum of 8 active speakers and up to 4 simultaneous conversations. With multiple concurrent discussions, the speech overlap ratio in the mixed audio can reach 100%. The image below shows an example of a recording session with 6 participants engaged in 3 separate conversations, each consisting of 2 speakers.
 
 ![](images/central_view.png)
 
-The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on #TBU). Here is some statistic number of MCoRec dataset. 
+The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on #TBU). 
+
+**Important**: All facial data in the MCoRec dataset is provided with clear, unblurred facial views to enable face-based analysis and recognition tasks.
+
+**Privacy Notice**: While faces are unblurred in the dataset for research purposes, any public presentations, publications, or demonstrations must not display speaker faces without explicit permission from the dataset authors for privacy protection.
+
+Here is some statistic number of MCoRec dataset. 
 
 |             | # sessions | # conversations | duration | session's duration | # speakers   | # speakers per conversation   | # conversations per session   |
 | ----------- | :---------:| :-------------: | :------: | :----------------: | :----------: | :---------------------------: | :---------------------------: |
@@ -17,9 +23,17 @@ The MCoRec dataset consists of 56 recordings for training (released on July 1th 
 | dev         | 25         |        60       |   2.5 h  |        6 min       |      12      |           2 - 4               |           1 - 4               |
 | eval        | 69         |        157      |   6.9 h  |        6 min       |      24      |           2 - 4               |           1 - 4               |
 
-The evaluation subset will remain hidden until shortly before the final submission of the systems. The participants can use the train set to build their systems and the dev set to evaluate and compare to the baseline. No training or automatic tuning is allowed on the development set.
+### Training Set
 
-For the training set, beyond the central view, each speaker is also recorded using a smartphone. This smartphone, placed close to and in front of the speaker for a clear facial view, captures an additional video stream. It also records audio from an attached close-talking lapel microphone.
+For the training set, beyond the central view, each speaker is also recorded using a smartphone. This smartphone, placed close to and in front of the speaker for a clear facial view, captures an additional video stream. It also records audio from an attached close-talking lapel microphone. This additional egocentric data is provided only for the training set to facilitate system development.
+
+### Development and Evaluation Sets
+
+The participants can use the train set to build their systems and the dev set to evaluate and compare to the baseline. No training or automatic tuning is allowed on the development set.
+
+**Important Note**: The smartphone recordings (egocentric videos and close-talking audio from lapel microphones) are **only available for the training set**. The development and evaluation sets contain **only the central 360° video and audio** captured by the central camera.
+
+The evaluation subset will remain hidden until shortly before the final submission of the systems.
 
 Note that the number of people show in the central view can be more than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
 
@@ -66,8 +80,10 @@ session_id
 
 - `speakers/`: This directory contains subdirectories for each individual target participant (e.g., `spk_0, spk_1, ... spk_N`) who needs to be processed in the session.
 
-- `central_crops/`: This folder contains data derived from the `central_video.mp4` specifically for a speaker. It contains multiple tracks, all from the same speaker but in different timeline (depend on how the speaker's face been recorded)
-  - `track_xx.mp4`: These are 96x96 face crop videos of the speaker.
+- `central_crops/`: This folder contains data derived from the `central_video.mp4` specifically for a speaker. It contains multiple tracks, all from the same speaker but in different timelines. The multiple tracks exist because face recognition is performed first to detect and track faces throughout the video. In some cases, frames may be miss-predicted during face recognition, causing the speaker's face tracking to be split into separate temporal segments, resulting in multiple tracks (where `xx` represents the track number: 00, 01, 02, etc.).
+  - `track_xx.mp4`: These are 224x224 face crop videos of the speaker, where `xx` is the track number. Technical specifications:
+    - Video: H264 (MPEG-4 AVC), 224x224 resolution, 25fps
+    - Audio: MPEG AAC Audio (mp4a), 16kHz sample rate, 32 bits per sample
   - `track_xx_bbox.json`: Stores bounding-box points. Each entry uses the frame number (as a string) to map to a bounding box specification. Example:
 
     ```json
