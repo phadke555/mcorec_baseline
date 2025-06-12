@@ -75,3 +75,11 @@ The baseline system is provided at [Github](https://github.com/MCoRec/mcorec_bas
 - **Output**: Speaker-to-cluster mapping in JSON format (`speaker_to_cluster.json`)
 
 This baseline establishes a reference implementation that participants can build upon and improve through more sophisticated approaches to better handle the challenging multi-conversation scenarios with high speech overlap and complex acoustic environments.
+
+## Results
+
+The results for the baseline model on dev subset are the following:
+
+- Average Conversation Clustering F1 score: 0.8553
+- Average Speaker WER: 0.5474
+- Average Cluster-Weighted WER: 0.3550
