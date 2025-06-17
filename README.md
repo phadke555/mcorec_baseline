@@ -194,6 +194,7 @@ unzip dev_without_central_videos.zip
         python script/inference.py --session_dir "path_to_set_folder/*"
         # Example: python script/inference.py --session_dir "data-bin/dev/*"
         ```
+    * **Inference time:** Processing the complete development video set takes approximately **2 hours** on a single NVIDIA Titan RTX 24GB GPU
 
 - Running data preprocessing (Optional)
 
@@ -238,7 +239,7 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
     * Conversation clustering F1 score
     * Speaker's WER
     * Speaker's clustering f1 score 
-    * Speaker's WER based clustering: 0.5 * WER + 0.5 * (1 - f1_score) 
+    * Speaker's Joint ASR-Clustering Error Rate: 0.5 * WER + 0.5 * (1 - f1_score) 
 
 * **Commands:**
 
@@ -254,10 +255,10 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
     # Conversation clustering F1 score: 1.0
     # Speaker to WER: {'spk_0': 0.4405, 'spk_1': 0.6137, 'spk_2': 0.5257, 'spk_3': 0.5556, 'spk_4': 0.7073, 'spk_5': 0.7102}
     # Speaker clustering F1 score: {'spk_0': 1.0, 'spk_1': 1.0, 'spk_2': 1.0, 'spk_3': 1.0, 'spk_4': 1.0, 'spk_5': 1.0}
-    # Cluster speaker to WER: {'spk_0': 0.22025, 'spk_1': 0.30685, 'spk_2': 0.26285, 'spk_3': 0.2778, 'spk_4': 0.35365, 'spk_5': 0.3551}
+    # Joint ASR-Clustering Error Rate: {'spk_0': 0.22025, 'spk_1': 0.30685, 'spk_2': 0.26285, 'spk_3': 0.2778, 'spk_4': 0.35365, 'spk_5': 0.3551}
     # Average Conversation Clustering F1 score: 1.0
     # Average Speaker WER: 0.5922
-    # Average Cluster-Weighted WER: 0.2961
+    # Average Joint ASR-Clustering Error Rate: 0.2961
 
 
     # Evaluating all sessions
@@ -338,6 +339,10 @@ gradient_accumulation_steps = 2   # Gradient accumulation
 save_steps = 2000                # Checkpoint saving frequency
 eval_steps = 2000                # Evaluation frequency
 ```
+**Hardware Requirements:**
+- **GPU Memory**: The default training configuration is designed to fit within **24GB GPU memory**
+- **Training Time**: With 2x NVIDIA Titan RTX 24GB GPUs, training takes approximately **56 hours per epoch**
+- **Convergence**: **200,000 steps** (total batch size 24) is typically sufficient for model convergence
 
 ## Acknowledgement
 

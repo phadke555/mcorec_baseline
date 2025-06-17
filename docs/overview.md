@@ -54,7 +54,7 @@ The evaluation uses **three complementary metrics**:
 
 1. **Individual Speaker's WER**: Word Error Rate computed for each speaker's transcription
 2. **Conversation Clustering Performance**: Pairwise F1 score measuring clustering accuracy
-3. **Cluster-Weighted WER** (*Primary Metric*): Combined metric that weights transcription performance and clustering performance
+3. **Joint ASR-Clustering Error Rate** (*Primary Metric*): Combined metric that weights transcription performance and clustering performance
 
 ## Important Dates
 

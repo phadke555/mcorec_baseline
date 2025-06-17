@@ -7,10 +7,12 @@ nav_order: 3
 
 ## Summary of the rules for systems participating in the challenge:
 
-- For building the system, it is allowed to use the training subset of MCoRec dataset and external data listed in the subsection Data and pre-trained models. If you believe there is some public dataset missing, you can propose it to be added until the deadline as specified in the schedule.
-- The development subset of MCoRec can be used for evaluating the system throughout the challenge period, but not for training or automatic tuning of the systems.
-- Pre-trained models are listed in the “Data and pre-trained models” subsection. Only those pre-trained models are allowed to be used. If you believe there is some model missing, you can propose it to be added until the deadline as specified in the schedule.
-If your system does not comply with these rules (e.g. by using a private dataset), you may still submit your system, but we will not include it in the final rankings.
+
+- The participants can use the development set to evaluating model performance during system development. It can be used to select the best model checkpoint, tune hyperparameters, and compare different system configurations. However, the dev set must not be used to train the model or update its internal parameters in any way.
+
+- For system development, participants are permitted to use the MCoRec training subset, as well as the external data and pre-trained models listed in the [Data and Pre-trained Models](#external-data-and-pre-trained-models) subsection. If you believe a public dataset or model is missing from this list, you may propose its addition before the deadline specified in the schedule.
+
+Systems that do not comply with these rules (e.g., by using a private dataset) may still be submitted but will be excluded from the final rankings.
 
 ## Evaluation
 
@@ -20,14 +22,14 @@ The system is evaluated on **three main metrics**:
 
 1. **Individual Speaker's WER**
 2. **Conversation Clustering Performance (Pairwise F1 Score)**
-3. **Cluster-Weighted WER** - *Primary Evaluation Metric*
+3. **Joint ASR-Clustering Error Rate** - *Primary Evaluation Metric*
 
 ---
 
 ### 1. Individual Speaker's WER
 
 - **Output Required:**  
-  For each speaker, the system must produce a `.vtt` file containing their speech transcript, time-aligned to the video.
+  For each speaker, the system must produce a [`.vtt`](./data.md#detailed-desciption-of-data-structure-and-formats) file containing their speech transcript, time-aligned to the video.
 
 - **Reference:**  
   Ground-truth `.vtt` files are provided for each speaker.
@@ -41,12 +43,13 @@ The system is evaluated on **three main metrics**:
         - WER = (Substitutions + Deletions + Insertions) / Number of words in reference
     - Average WER is calculated across all speakers across all sessions.
 
+- **Implementation:** [script/evaluate.evaluate_speaker_transcripts](https://github.com/MCoRec/mcorec_baseline/blob/0b9b1197adf182109771d623c7a537d326efff21/script/evaluate.py#L56)
 ---
 
 ### 2. Conversation Clustering Performance (Pairwise F1 Score)
 
 - **Output Required:**  
-  The system must output a mapping (`speaker_to_cluster.json`) assigning each speaker to a conversation cluster (cluster ID).
+  The system must output a mapping ([`speaker_to_cluster.json`](./data.md#detailed-desciption-of-data-structure-and-formats)) assigning each speaker to a conversation cluster (cluster ID).
 
 - **Reference:**  
   Ground-truth cluster assignments are provided for each speaker.
@@ -64,9 +67,10 @@ The system is evaluated on **three main metrics**:
         - **Pairwise F1 Score:** 2 * (Precision * Recall) / (Precision + Recall)
     - **Average F1 Score** is reported across all sessions.
 
+- **Implementation:** [script/evaluate.evaluate_conversation_clustering](https://github.com/MCoRec/mcorec_baseline/blob/0b9b1197adf182109771d623c7a537d326efff21/script/evaluate.py#L15)
 ---
 
-### 3. Cluster-Weighted WER - *Primary Metric*
+### 3. Joint ASR-Clustering Error Rate - *Primary Metric*
 
 This is the **main evaluation metric** that combines both transcription and clustering performance at the speaker level.
 
@@ -88,12 +92,14 @@ For each speaker, a clustering F1 score is computed using a one-vs-rest approach
         - **Recall:** TP / (TP + FN)
         - **F1:** 2 * (Precision * Recall) / (Precision + Recall)
 
+- **Implementation:** [script/evaluate.evaluate_speaker_clustering](https://github.com/MCoRec/mcorec_baseline/blob/0b9b1197adf182109771d623c7a537d326efff21/script/evaluate.py#L22)
+
 #### 3.2 Combined Metric Calculation
 
 For each speaker:
 
 ```math
-\text{Cluster-Weighted WER} = 0.5 \times \text{Speaker\_WER} + 0.5 \times (1 - \text{Per\_Speaker\_Clustering\_F1})
+\text{Joint ASR-Clustering Error Rate} = 0.5 \times \text{Speaker\_WER} + 0.5 \times (1 - \text{Per\_Speaker\_Clustering\_F1})
 ```
 
 This metric:
@@ -101,14 +107,14 @@ This metric:
 - Equally weights transcription accuracy and clustering accuracy
 - **Lower values are better**
 
-The **final primary metric** is the average Cluster-Weighted WER across all speakers in all sessions.
+The **final primary metric** is the average Joint ASR-Clustering Error Rate across all speakers in all sessions. 
 
 ---
 
 
 ## External data and pre-trained models
 
-Besides the MCoRec dataset published with this challenge, the participants are allowed to use public datasets and pre-trained models listed below. In case you want to propose additional dataset or pre-trained model to be added to these lists, do so by contacting us at [Slack]() until #TBU. If you want to use a private dataset or model, you may still submit your system to the challenge, but we will not include it in the final rankings.
+Besides the MCoRec dataset published with this challenge, the participants are allowed to use public datasets and pre-trained models listed below. In case you want to propose additional dataset or pre-trained model to be added to these lists, do so by contacting us at [Slack](https://join.slack.com/t/chimechallenge/shared_invite/zt-37h0cfpeb-qg5jwCgqRWCKc_3mLWVsYA) until #TBU. If you want to use a private dataset or model, you may still submit your system to the challenge, but we will not include it in the final rankings.
 
 Participants may use these publicly available datasets for building the systems:
 

@@ -18,19 +18,49 @@ import datasets
 # os.environ['WANDB_PROJECT'] = 'mcorec'
 
 
-def load_avsr_dataset(cache_dir='data-bin/cache', streaming=True):
+def load_avsr_dataset(cache_dir='data-bin/cache', streaming=False):
     def format_sample(sample):
         sample['label'] = str(sample['label'], encoding='utf-8')
         sample['length'] = int(sample['length'])
         sample['sample_id'] = str(sample['sample_id'], encoding='utf-8')
         return sample
     
-    # Load dataset    
-    lrs2 = datasets.load_dataset("nguyenvulebinh/AVYT", "lrs2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
-    vox2 = datasets.load_dataset("nguyenvulebinh/AVYT", "vox2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
-    avyt = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
-    avyt_mix = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt-mix", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+    # Load dataset
+    finished_loading = False
+    try_times = 0
+    max_try_times = 5
+
+    while not finished_loading:
+        try:
+            # Load dataset. It's quite bigdataset and sometime downloading can break. You can simple retry.
+            lrs2 = datasets.load_dataset("nguyenvulebinh/AVYT", "lrs2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+            vox2 = datasets.load_dataset("nguyenvulebinh/AVYT", "vox2", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+            avyt = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+            avyt_mix = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt-mix", streaming=streaming, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+            finished_loading = True
+        except Exception as e:
+            try_times += 1
+            if try_times >= max_try_times:
+                raise e
+            time.sleep(10)
     
+    if not streaming:
+        # That mean above datasets are already downloaded and cached
+        # Now init again with streaming=True
+        # lrs2 = datasets.load_dataset("nguyenvulebinh/AVYT", "lrs2", streaming=True, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+        # vox2 = datasets.load_dataset("nguyenvulebinh/AVYT", "vox2", streaming=True, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+        # avyt = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt", streaming=True, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+        # avyt_mix = datasets.load_dataset("nguyenvulebinh/AVYT", "avyt-mix", streaming=True, cache_dir=cache_dir).remove_columns(['__key__', '__url__'])
+        for ds in [lrs2, vox2, avyt, avyt_mix]:
+            for split in ds.keys():
+                split_size = len(ds[split])
+                if split_size > 10000:
+                    num_shards = max(20, split_size // 10000)
+                else:
+                    num_shards = 1
+                ds[split] = ds[split].to_iterable_dataset(num_shards=num_shards)
+                print(f"Split {split} has {split_size} samples and {ds[split].num_shards} shards")
+
     map_datasets = {
         "lrs2": {
             "probabilities": 0.3,
@@ -110,7 +140,7 @@ if __name__ == "__main__":
     
     
     # Load dataset
-    train_dataset, valid_dataset, interference_dataset = load_avsr_dataset()
+    train_dataset, valid_dataset, interference_dataset = load_avsr_dataset(streaming=True)
     
     
     train_av_data_collator = DataCollator(

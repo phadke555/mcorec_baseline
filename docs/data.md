@@ -29,11 +29,10 @@ For the training set, beyond the central view, each speaker is also recorded usi
 
 ### Development and Evaluation Sets
 
-The participants can use the train set to build their systems and the dev set to evaluate and compare to the baseline. No training or automatic tuning is allowed on the development set.
+The participants can use the development set to evaluating model performance during system development. It can be used to select the best model checkpoint, tune hyperparameters, and compare different system configurations. However, the dev set must not be used to train the model or update its internal parameters in any way.
+
 
 **Important Note**: The smartphone recordings (egocentric videos and close-talking audio from lapel microphones) are **only available for the training set**. The development and evaluation sets contain **only the central 360° video and audio** captured by the central camera.
-
-The evaluation subset will remain hidden until shortly before the final submission of the systems.
 
 Note that the number of people show in the central view can be more than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
 
@@ -189,4 +188,49 @@ session_id
 
 ## Getting the data
 
-For obtaining the data, please refer to the download link at [this website](https://huggingface.co/datasets/nguyenvulebinh/mcorec). Please note that access requires signing a Data Use Agreement (DUA). This DUA stipulates that the data must not be further distributed to any individuals or entities who have not also signed the agreement. #TBU DUA 
+- MCoRec-Train:
+  - [train_only_central_videos.zip \[~200GB\]](#)
+  - [train_without_central_videos.zip \[~10GB\]](#)
+
+- MCoRec-Dev:
+  - [dev_only_central_videos.zip \[~100GB\]](#)
+  - [dev_without_central_videos.zip \[~6GB\]](https://huggingface.co/datasets/nguyenvulebinh/mcorec/resolve/main/dev_without_central_videos.zip)
+
+- MCoRec-Eval:
+  - [eval_only_central_videos.zip \[~200GB\]](#)
+  - [eval_without_central_videos.zip \[~10GB\]](#)
+
+For obtaining the the MCoRec dataset, you first need to request access and then download it using your Hugging Face token. Please note that access requires signing a Data Use Agreement (DUA). This DUA stipulates that the data must not be further distributed to any individuals or entities who have not also signed the agreement. #TBU DUA 
+
+-  **Request Access:**
+    - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/nguyenvulebinh/mcorec) on Hugging Face.
+    - Request access to the dataset. You will need a Hugging Face account.
+
+-  **Get Your Hugging Face Token:**
+
+    If you don't have one, create a Hugging Face User Access Token. Follow the instructions [here](https://huggingface.co/docs/hub/security-tokens) to obtain your `HF_TOKEN`. Make sure it has read permissions.
+
+-  **Download and Unzip Dataset Files:**
+
+    It's recommended to download and unzip the data into a `data-bin` directory within your `mcorec_baseline` project folder.
+
+```sh
+# Navigate to your baseline project directory if you aren't already there
+# cd mcorec_baseline 
+
+# Create a data directory (if it doesn't exist)
+mkdir -p data-bin
+cd data-bin
+
+# Export your Hugging Face token (replace 'your_actual_token_here' with your actual token)
+export HF_TOKEN=your_actual_token_here
+
+# Download the development set
+wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/nguyenvulebinh/mcorec/resolve/main/dev_without_central_videos.zip
+
+# Unzip the downloaded files
+unzip dev_without_central_videos.zip
+
+# Download the train set TBU
+# Download the evaluation set TBU
+```

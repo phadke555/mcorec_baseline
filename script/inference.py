@@ -62,7 +62,7 @@ def inference(model, video, audio, text_transform, beam_search):
     predicted = text_transform.post_process(predicted_token_id).replace("<eos>", "")
     return predicted
 
-def chunk_video(video_path, asd_path=None, max_length=15):
+def chunk_video(video_path, asd_path=None, max_length=10):
     # load video and split into chunks for inference
     if asd_path is not None:
         with open(asd_path, "r") as f:
@@ -73,7 +73,9 @@ def chunk_video(video_path, asd_path=None, max_length=15):
         # Find the minimum frame number to normalize frame indices
         min_frame = min(frames)
 
-        segments_by_frames = segment_by_asd(asd)
+        segments_by_frames = segment_by_asd(asd, {
+            "max_chunk_size": max_length,  # in seconds
+        })
         # Normalize frame indices, for inference, don't care about the actual frame indices
         segments = [((seg[0] - min_frame) / 25, (seg[-1] - min_frame) / 25) for seg in segments_by_frames]
 
@@ -117,7 +119,7 @@ def infer_video(
     video_path, asd_path=None, offset=0.
 ):
     
-    segments = chunk_video(video_path, asd_path)
+    segments = chunk_video(video_path, asd_path, max_length=10)
     segment_output = []
     for seg in tqdm(segments, desc="Processing segments", total=len(segments)):
         # Inference

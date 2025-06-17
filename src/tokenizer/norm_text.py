@@ -1,5 +1,4 @@
 import re
-from transformers.models.whisper.english_normalizer import EnglishTextNormalizer
 
 def remove_disfluencies(text):
     list_disfluencies = set(
@@ -11,8 +10,6 @@ def remove_disfluencies(text):
             continue
         refined_text.append(word)
     return " ".join(refined_text)
-
-
 
 def format_text(word, w_type):
     def norm_transform(word, w_type):
@@ -133,7 +130,6 @@ def is_valid_word(word):
     return False, "unknown"
 
 def norm_string(text):
-    # normalizer = EnglishTextNormalizer({})
     words = text.strip().split()
     norm_words = []
     
@@ -146,5 +142,4 @@ def norm_string(text):
         else:
             norm_word = format_text(word, "unknown")
         norm_words.append(norm_word)
-    # return normalizer(" ".join(norm_words))
-    return " ".join(norm_words)   
+    return " ".join(norm_words)

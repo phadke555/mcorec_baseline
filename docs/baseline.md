@@ -82,4 +82,4 @@ The results for the baseline model on dev subset are the following:
 
 - Average Conversation Clustering F1 score: 0.8553
 - Average Speaker WER: 0.5474
-- Average Cluster-Weighted WER: 0.3550
+- Average Joint ASR-Clustering Error Rate: 0.3550

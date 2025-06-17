@@ -20,9 +20,9 @@ EGO_ASD_CHUNKING_PARAMETERS = {
 }
 
 
-def segment_by_asd(asd, parameters=CENTRAL_ASD_CHUNKING_PARAMETERS):
-    onset_threshold = parameters["onset"]    
-    offset_threshold = parameters["offset"]
+def segment_by_asd(asd, parameters={}):
+    onset_threshold = parameters.get("onset", CENTRAL_ASD_CHUNKING_PARAMETERS["onset"])
+    offset_threshold = parameters.get("offset", CENTRAL_ASD_CHUNKING_PARAMETERS["offset"])
     
     # Convert frame numbers to integers and sort them
     frames = sorted([int(f) for f in asd.keys()])
@@ -33,10 +33,10 @@ def segment_by_asd(asd, parameters=CENTRAL_ASD_CHUNKING_PARAMETERS):
     min_frame = min(frames)
     
     # Convert duration parameters from seconds to frames (assuming 25 fps)
-    min_duration_on_frames = int(parameters["min_duration_on"] * 25)
-    min_duration_off_frames = int(parameters["min_duration_off"] * 25)
-    max_chunk_frames = int(parameters["max_chunk_size"] * 25)
-    min_chunk_frames = int(parameters["min_chunk_size"] * 25)
+    min_duration_on_frames = int(parameters.get("min_duration_on",  CENTRAL_ASD_CHUNKING_PARAMETERS["min_duration_on"]) * 25)
+    min_duration_off_frames = int(parameters.get("min_duration_off", CENTRAL_ASD_CHUNKING_PARAMETERS["min_duration_on"]) * 25)
+    max_chunk_frames = int(parameters.get("max_chunk_size", CENTRAL_ASD_CHUNKING_PARAMETERS["max_chunk_size"]) * 25)
+    min_chunk_frames = int(parameters.get("min_chunk_size", CENTRAL_ASD_CHUNKING_PARAMETERS["min_chunk_size"]) * 25)
     
     # First pass: Find speech regions using hysteresis thresholding
     speech_regions = []
