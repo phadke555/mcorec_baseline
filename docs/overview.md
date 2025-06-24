@@ -11,6 +11,8 @@ nav_order: 0
 
 CHiME-9 Task 1 targets the problem of **Multi-Modal Context-aware Recognition (MCoRec)** in a single-room environment. The goal is to process a single 360° video and audio recording of a room where multiple, separate conversations are happening simultaneously, and to both transcribe each speaker's speech and identify which speakers belong to the same conversation. This task addresses the challenging scenario of understanding overlapping conversations in natural social environments, where multiple groups of people engage in distinct discussions within the same physical space.
 
+![MCoRec Challenge Overview](images/mcorec_overview.png)
+
 ## Key Challenge Features
 
 * **Multiple concurrent conversations** occurring simultaneously in the same room

@@ -3,7 +3,13 @@ import os
 import torch
 import torchaudio
 import torchvision
-from torchcodec.decoders import VideoDecoder, AudioDecoder
+from torchcodec.decoders import VideoDecoder
+# check if AudioDecoder is available
+try:
+    from torchcodec.decoders import AudioDecoder
+except ImportError:
+    AudioDecoder = None
+
 import random
 from dataclasses import dataclass
 from src.tokenizer.spm_tokenizer import TextTransform
@@ -60,10 +66,20 @@ def load_video(path, start_time=0, end_time=None):
 #     return waveform.transpose(1, 0)
 
 def load_audio(path, start_time=0, end_time=None):
-    audio_decoder = AudioDecoder(path)
-    if end_time is None:
-        end_time = audio_decoder.metadata.duration_seconds_from_header
-    waveform = audio_decoder.get_samples_played_in_range(start_time, end_time).data
+    if AudioDecoder is not None:
+        audio_decoder = AudioDecoder(path)
+        if end_time is None:
+            end_time = audio_decoder.metadata.duration_seconds_from_header
+        waveform = audio_decoder.get_samples_played_in_range(start_time, end_time).data
+    else:
+        if start_time == 0 and end_time is None:
+            frame_offset = 0
+            num_frames = -1
+        else:
+            frame_offset = int(start_time * 16000)
+            num_frames = int((end_time - start_time) * 16000)
+        waveform, sample_rate = torchaudio.load(path, frame_offset=frame_offset, num_frames=num_frames, normalize=True)
+        assert sample_rate == 16000
     return waveform.transpose(1, 0)  # T x 1
 
 

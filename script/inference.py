@@ -56,13 +56,14 @@ def inference(model, video, audio, text_transform, beam_search):
 
     audiovisual_feat = audiovisual_feat.squeeze(0)
 
-    nbest_hyps = beam_search(audiovisual_feat)
+    # nbest_hyps = beam_search(audiovisual_feat)
+    nbest_hyps = beam_search(audiovisual_feat, maxlenratio=0.6)
     nbest_hyps = [h.asdict() for h in nbest_hyps[: min(len(nbest_hyps), 1)]]
     predicted_token_id = torch.tensor(list(map(int, nbest_hyps[0]["yseq"][1:])))
     predicted = text_transform.post_process(predicted_token_id).replace("<eos>", "")
     return predicted
 
-def chunk_video(video_path, asd_path=None, max_length=10):
+def chunk_video(video_path, asd_path=None, max_length=15):
     # load video and split into chunks for inference
     if asd_path is not None:
         with open(asd_path, "r") as f:
@@ -119,7 +120,7 @@ def infer_video(
     video_path, asd_path=None, offset=0.
 ):
     
-    segments = chunk_video(video_path, asd_path, max_length=10)
+    segments = chunk_video(video_path, asd_path, max_length=15)
     segment_output = []
     for seg in tqdm(segments, desc="Processing segments", total=len(segments)):
         # Inference
@@ -132,8 +133,12 @@ def infer_video(
         audios = sample_features["audios"].cuda()
         videos = sample_features["videos"].cuda()
         audio_lengths = sample_features["audio_lengths"].cuda()
-        video_lengths = sample_features["video_lengths"].cuda()        
-        output = inference(model, videos, audios, text_transform, beam_search)
+        video_lengths = sample_features["video_lengths"].cuda()
+        try:
+            output = inference(model, videos, audios, text_transform, beam_search)
+        except Exception as e:
+            print(f"Error during inference for segment {sample}")
+            raise e
         segment_output.append(output)
 
     return [

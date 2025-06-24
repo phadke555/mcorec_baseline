@@ -189,21 +189,21 @@ session_id
 ## Getting the data
 
 - MCoRec-Train:
-  - [train_only_central_videos.zip \[~200GB\]](#)
-  - [train_without_central_videos.zip \[~10GB\]](#)
+  - [train_only_central_videos.zip \[~46GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/train_only_central_videos.zip)
+  - [train_without_central_videos.zip \[~36.2GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/train_without_central_videos.zip)
 
 - MCoRec-Dev:
-  - [dev_only_central_videos.zip \[~100GB\]](#)
-  - [dev_without_central_videos.zip \[~6GB\]](https://huggingface.co/datasets/nguyenvulebinh/mcorec/resolve/main/dev_without_central_videos.zip)
+  - [dev_only_central_videos.zip \[~20.6GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_only_central_videos.zip)
+  - [dev_without_central_videos.zip \[~6.12GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_without_central_videos.zip)
 
 - MCoRec-Eval:
-  - [eval_only_central_videos.zip \[~200GB\]](#)
+  - [eval_only_central_videos.zip \[~50GB\]](#)
   - [eval_without_central_videos.zip \[~10GB\]](#)
 
 For obtaining the the MCoRec dataset, you first need to request access and then download it using your Hugging Face token. Please note that access requires signing a Data Use Agreement (DUA). This DUA stipulates that the data must not be further distributed to any individuals or entities who have not also signed the agreement. #TBU DUA 
 
 -  **Request Access:**
-    - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/nguyenvulebinh/mcorec) on Hugging Face.
+    - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) on Hugging Face.
     - Request access to the dataset. You will need a Hugging Face account.
 
 -  **Get Your Hugging Face Token:**
@@ -226,7 +226,7 @@ cd data-bin
 export HF_TOKEN=your_actual_token_here
 
 # Download the development set
-wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/nguyenvulebinh/mcorec/resolve/main/dev_without_central_videos.zip
+wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_without_central_videos.zip
 
 # Unzip the downloaded files
 unzip dev_without_central_videos.zip

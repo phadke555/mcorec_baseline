@@ -49,6 +49,9 @@ cd mcorec_baseline
 conda create --name mcorec python=3.11
 conda activate mcorec
 
+# Install FFmpeg, if it's not already installed.
+conda install ffmpeg
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -62,7 +65,7 @@ unzip model-bin.zip
 To use the MCoRec dataset, you first need to request access and then download it using your Hugging Face token.
 
 -  **Request Access:**
-    - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/nguyenvulebinh/mcorec) on Hugging Face.
+    - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) on Hugging Face.
     - Request access to the dataset. You will need a Hugging Face account.
 
 -  **Get Your Hugging Face Token:**
@@ -85,13 +88,10 @@ cd data-bin
 export HF_TOKEN=your_actual_token_here
 
 # Download the development set
-wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/nguyenvulebinh/mcorec/resolve/main/dev_without_central_videos.zip
+wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_without_central_videos.zip
 
 # Unzip the downloaded files
 unzip dev_without_central_videos.zip
-
-# Download the train set TBU
-# Download the evaluation set TBU
 ```
 
 
@@ -310,6 +310,12 @@ The training pipeline automatically handles dataset loading and loads data in [s
 
 The training script is available at `script/train.py`.
 
+**Basic Training (Single GPU):**
+```sh
+# Run with default parameters
+python script/train.py
+```
+
 **Multi-GPU Distributed Training:**
 ```sh
 # Set environment variables for distributed training
@@ -317,28 +323,60 @@ export NCCL_DEBUG=WARN
 export OMP_NUM_THREADS=1
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 
-# Run with torchrun for multi-GPU training
+# Run with torchrun for multi-GPU training (using default parameters)
 torchrun --nproc_per_node 4 script/train.py
+
+# Run with custom parameters
+torchrun --nproc_per_node 4 script/train.py \
+    --streaming_dataset \
+    --include_mcorec \
+    --batch_size 6 \
+    --max_steps 400000 \
+    --gradient_accumulation_steps 2 \
+    --save_steps 2000 \
+    --eval_steps 2000 \
+    --learning_rate 1e-4 \
+    --warmup_steps 4000 \
+    --checkpoint_name mcorec_finetuning \
+    --model_name_or_path ./model-bin/avsr_cocktail \
+    --output_dir ./model-bin
 ```
 
 **Model Output:**
-The trained model will be saved by default in `model-bin/avhubert_avsr_cocktail/`.
+The trained model will be saved by default in `model-bin/{checkpoint_name}/` (default: `model-bin/mcorec_finetuning/`).
 
-#### Custom Configuration
+#### Configuration Options
 
-You can modify training parameters by editing the configuration section in `script/train.py`:
+You can customize training parameters using command line arguments:
 
-```python
-# Adjustable training parameters
+**Dataset Options:**
+- `--streaming_dataset`: Use streaming mode for datasets (default: False)
+- `--include_mcorec`: Include MCoRec dataset in training (default: False)
 
-batch_size = 6                    # Batch size per device
-max_steps = 200000               # Total training steps
-learning_rate = 1e-4             # Initial learning rate
-warmup_steps = 4000              # Learning rate warmup steps
-gradient_accumulation_steps = 2   # Gradient accumulation
-save_steps = 2000                # Checkpoint saving frequency
-eval_steps = 2000                # Evaluation frequency
-```
+> **Note:** If you enable `--include_mcorec`, you must first:
+> 1. Login to Hugging Face Hub: `huggingface-cli login`
+> 2. Ensure your account has access to the MCoRec dataset
+> 3. See [Section 2: Download MCoRec dataset](#dataset) for details on requesting access to the [MCoRec dataset repository](https://huggingface.co/datasets/MCoRecChallenge/MCoRec)
+
+**Training Parameters:**
+- `--batch_size`: Batch size per device (default: 6)
+- `--max_steps`: Total training steps (default: 400000)
+- `--learning_rate`: Initial learning rate (default: 1e-4)
+- `--warmup_steps`: Learning rate warmup steps (default: 4000)
+- `--gradient_accumulation_steps`: Gradient accumulation (default: 2)
+
+**Checkpoint and Logging:**
+- `--save_steps`: Checkpoint saving frequency (default: 2000)
+- `--eval_steps`: Evaluation frequency (default: 2000)
+- `--log_interval`: Logging frequency (default: 25)
+- `--checkpoint_name`: Name for the checkpoint directory (default: "mcorec_finetuning")
+- `--resume_from_checkpoint`: Resume training from last checkpoint (default: False)
+
+**Model and Output:**
+- `--model_name_or_path`: Path to pretrained model (default: "./model-bin/avsr_cocktail")
+- `--output_dir`: Output directory for checkpoints (default: "./model-bin")
+- `--report_to`: Logging backend, "wandb" or "none" (default: "none")
+
 **Hardware Requirements:**
 - **GPU Memory**: The default training configuration is designed to fit within **24GB GPU memory**
 - **Training Time**: With 2x NVIDIA Titan RTX 24GB GPUs, training takes approximately **56 hours per epoch**
