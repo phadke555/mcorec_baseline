@@ -8,6 +8,8 @@ This repository contains the baseline system for CHiME-9 challenge, Task 1 MCoRe
 
 **CHiME-9 Task 1: Multi-Modal Context-aware Recognition (MCoRec)** addresses the challenging problem of understanding multiple concurrent conversations in a single room environment. The task requires systems to process a single 360° video and audio recording where multiple separate conversations are happening simultaneously, and to both **transcribe each speaker's speech** and **identify which speakers belong to the same conversation**.
 
+![Overview](docs/images/mcorec_overview.png)
+
 ### Key Challenge Features
 - **Multiple concurrent conversations** (up to 4) with up to 8 active speakers
 - **High speech overlap ratios** reaching up to 100% due to simultaneous conversations  

@@ -5,7 +5,7 @@ parent: CHiME-9 Task 1 - MCoRec
 nav_order: 1
 ---
 
-The [MCoRec dataset](#) contains video recording sessions. A single recording session typically features multiple conversations, each involving two or more participants. A 360° camera, placed in the middle of the room, captures the central view which contains all participants. The audio for the sessions is also captured by the microphone integrated into the 360° camera. Each session can involve a maximum of 8 active speakers and up to 4 simultaneous conversations. With multiple concurrent discussions, the speech overlap ratio in the mixed audio can reach 100%. The image below shows an example of a recording session with 6 participants engaged in 3 separate conversations, each consisting of 2 speakers.
+The [MCoRec dataset](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) contains video recording sessions. A single recording session typically features multiple conversations, each involving two or more participants. A 360° camera, placed in the middle of the room, captures the central view which contains all participants. The audio for the sessions is also captured by the microphone integrated into the 360° camera. Each session can involve a maximum of 8 active speakers and up to 4 simultaneous conversations. With multiple concurrent discussions, the speech overlap ratio in the mixed audio can reach 100%. The image below shows an example of a recording session with 6 participants engaged in 3 separate conversations, each consisting of 2 speakers.
 
 ![](images/central_view.png)
 
@@ -200,7 +200,7 @@ session_id
   - [eval_only_central_videos.zip \[~50GB\]](#)
   - [eval_without_central_videos.zip \[~10GB\]](#)
 
-For obtaining the the MCoRec dataset, you first need to request access and then download it using your Hugging Face token. Please note that access requires signing a Data Use Agreement (DUA). This DUA stipulates that the data must not be further distributed to any individuals or entities who have not also signed the agreement. #TBU DUA 
+For obtaining the the MCoRec dataset, you first need to request access and then download it using your Hugging Face token. Please note that access requires signing a Data Use Agreement.
 
 -  **Request Access:**
     - Go to the [MCoRec dataset repository](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) on Hugging Face.
@@ -230,7 +230,4 @@ wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/
 
 # Unzip the downloaded files
 unzip dev_without_central_videos.zip
-
-# Download the train set TBU
-# Download the evaluation set TBU
 ```
