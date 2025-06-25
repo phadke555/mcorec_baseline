@@ -35,8 +35,9 @@ For detailed information about the challenge, please refer to:
 2. <a href="#dataset">Download MCoRec dataset</a>
 3. <a href="#running">Running the baseline system</a>
 4. <a href="#evaluation">Evaluation</a>
-5. <a href="#results">Results</a>
-6. <a href="#finetuning">Finetuining AVSR model</a>
+5. <a href="#finetuning">Finetuning AVSR model</a>
+6. <a href="#results">Results</a>
+7. <a href="#faq">FAQ - Frequently Asked Questions</a>
 
 ## <a id="install">1. Installation </a>
 
@@ -250,10 +251,10 @@ unzip dev_without_central_videos.zip
 
     You can use the pre-packaged processed data by default or choose to modify/regenerate these files if needed for your experiments.
 
-- **[Run Example in Google Colab](https://colab.research.google.com/drive/1LmFdN-gEfC6Xt-4xRSz_VJyZiiMsVLGY?usp=sharing)**: Interactive notebook for a step-by-step run-through.
+- **[Run Example in Google Colab](https://colab.research.google.com/drive/1yI1lBMQfQNcpvHcuM_BBYKsW09BuY3P4?usp=sharing)**: Interactive notebook for a step-by-step run-through.
 
 
-## <a id="#evaluation">4. Evaluation</a>
+## <a id="evaluation">4. Evaluation</a>
 
 The `evaluate.py` script calculates performance metrics based on the system's output and the ground truth labels.
 
@@ -262,7 +263,7 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
 
     * Conversation clustering F1 score
     * Speaker's WER
-    * Speaker's clustering f1 score 
+    * Speaker's clustering F1 score 
     * Speaker's Joint ASR-Clustering Error Rate: 0.5 * WER + 0.5 * (1 - f1_score) 
 
 * **Commands:**
@@ -393,7 +394,7 @@ You can customize training parameters using command line arguments:
 - **Training Time**: With 2x NVIDIA Titan RTX 24GB GPUs, training takes approximately **56 hours per epoch**
 - **Convergence**: **200,000 steps** (total batch size 24) is typically sufficient for model convergence
 
-## <a id="#results">6. Results</a>
+## <a id="results">6. Results</a>
 
 The results for the baseline systems on the development subset are shown below. All systems share the same core components and configuration settings, with the only difference being the AVSR (Audio-Visual Speech Recognition) model architecture used.
 
@@ -437,7 +438,32 @@ The baseline systems differ only in their AVSR model architecture:
 | BL3 | [Auto-AVSR](https://arxiv.org/abs/2303.14307) | No | Time-based | 0.8153 | 0.8315 | 0.5211 |
 | BL4 | [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) | Yes | Time-based | 0.8153 | 0.4990 | 0.3548 |
 
+## <a id="faq">7. FAQ - Frequently Asked Questions</a>
 
+**Q: What are the minimum system requirements?**
+A: 
+- **OS**: Linux (Ubuntu 18.04+)
+- **Python**: 3.11 (recommended) or higher
+- **GPU**: NVIDIA GPU with CUDA 12+ and at least 24GB VRAM
+- **RAM**: 64GB+ recommended for training
+- **Storage**: 100GB free space (2TB+ if downloading all training datasets)
+
+**Q: I'm getting "CUDA out of memory" errors during inference. How can I fix this?**
+A: The baseline models are optimized to work well with 24GB GPU memory. However, when using custom models or in certain configurations, you might encounter CUDA out-of-memory errors. Here are solutions to reduce memory consumption:
+
+1. **Reduce video segment length** (most effective):
+   ```bash
+   # Default max_length is 15 seconds, try reducing it
+   python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 --max_length 10
+   
+   # For severe memory constraints, try even smaller segments
+   python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 --max_length 5
+   ```
+
+2. **Reduce beam size**:
+   ```bash
+   python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 --beam_size 1
+   ```
 
 ## Acknowledgement
 
