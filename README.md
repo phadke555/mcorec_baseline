@@ -187,26 +187,24 @@ unzip dev_without_central_videos.zip
     * **Commands:**
 
         ```sh
+        # BL1: AV-HuBERT CTC/Attention
+        python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132
+        # For all dev sessions: python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*"
 
-        # Basic usage - Infer single session with default AVSR Cocktail model
-        python script/inference.py --model_type avsr_cocktail --session_dir path_to_session_folder 
-        # Example: python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132
+        # BL2: MuAViC-EN with AV-HuBERT Transformer decoder
+        python script/inference.py --model_type muavic_en --session_dir "data-bin/dev/*" \
+            --checkpoint_path nguyenvulebinh/AV-HuBERT-MuAViC-en \
+            --max_length 15
 
-        # Infer all sessions with default AVSR Cocktail model
-        python script/inference.py --model_type avsr_cocktail --session_dir "path_to_set_folder/*"
-        # Example: python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*"
+        # BL3: Auto-AVSR with Conformer CTC/Attention
+        python script/inference.py --model_type auto_avsr --session_dir "data-bin/dev/*" \
+            --checkpoint_path ./model-bin/auto_avsr/avsr_trlrwlrs2lrs3vox2avsp_base.pth \
+            --beam_size 3 --max_length 15
 
-        # Using different model types (available options: avsr_cocktail, auto_avsr, muavic_en)
-        python script/inference.py --model_type auto_avsr --session_dir data-bin/dev/session_132
-        python script/inference.py --model_type muavic_en --session_dir data-bin/dev/session_132
-
-        # Advanced usage with custom parameters
-        python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 \
-            --beam_size 5 --max_length 20 --verbose
-
-        # Using custom checkpoint
-        python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 \
-            --checkpoint_path ./my-custom-model --cache_dir ./my-cache
+        # BL4: AV-HuBERT CTC/Attention (MCoRec fine-tuned)
+        python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*" \
+            --checkpoint_path ./model-bin/avsr_cocktail_mcorec_finetune \
+            --beam_size 3 --max_length 15
         ```
         
         **Available Parameters:**
@@ -217,6 +215,8 @@ unzip dev_without_central_videos.zip
         - `--max_length` (optional): Maximum video segment length in seconds (default: 15)
         - `--beam_size` (optional): Beam search size for decoding (default: 3)
         - `--verbose` (optional): Enable detailed output
+
+        **Note:** All pretrained models (BL1 and BL4: `avsr_cocktail`, BL3: `auto_avsr`) should be located in the `model-bin/` folder, which was downloaded and unzipped during the [Installation section](#install). The BL2 model (`nguyenvulebinh/AV-HuBERT-MuAViC-en`) will be automatically downloaded from Hugging Face when specified in the checkpoint path.
         
     * **Inference time:** Processing the complete development video set takes approximately **2 hours** on a single NVIDIA Titan RTX 24GB GPU
 
