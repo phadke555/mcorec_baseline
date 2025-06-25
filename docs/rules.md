@@ -8,7 +8,7 @@ nav_order: 3
 ## Summary of the rules for systems participating in the challenge:
 
 
-- The participants can use the development set to evaluating model performance during system development. It can be used to select the best model checkpoint, tune hyperparameters, and compare different system configurations. However, the dev set must not be used to train the model or update its internal parameters in any way.
+- The participants can use the development set to evaluate model performance during system development. It can be used to select the best model checkpoint, tune hyperparameters, and compare different system configurations. However, the dev set must not be used to train the model or update its internal parameters in any way.
 
 - For system development, participants are permitted to use the MCoRec training subset, as well as the external data and pre-trained models listed in the [Data and Pre-trained Models](#external-data-and-pre-trained-models) subsection. If you believe a public dataset or model is missing from this list, you may propose its addition before the deadline specified in the schedule.
 

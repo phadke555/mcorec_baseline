@@ -23,7 +23,9 @@ nav_order: 2
 
 ![](images/setting.png)
 
-- Seating Arrangement: All speakers sit around a table; distances vary by table size.
+- Recording Environments: Data was collected across approximately 10 different rooms of varying sizes and types, including living rooms, meeting rooms, lecture halls, and other indoor spaces.
+
+- Seating Arrangement: All speakers sit around a table; distances vary by table size (around 2 to 5 meters).
 
 - Smartphone Placement: Each speaker has a smartphone in front (selfie mode) with a lapel mic clipped near the mouth.
 

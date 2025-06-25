@@ -9,7 +9,7 @@ The [MCoRec dataset](#) contains video recording sessions. A single recording se
 
 ![](images/central_view.png)
 
-The MCoRec dataset consists of 56 recordings for training (released on July 1th 2025), 25 recordings for development (released on July 1th 2025) and 69 recordings for evaluation (will be released on #TBU). 
+The MCoRec dataset consists of 56 recordings for training (released on July 1st 2025), 25 recordings for development (released on July 1st 2025) and 69 recordings for evaluation (will be released on #TBU). 
 
 **Important**: All facial data in the MCoRec dataset is provided with clear, unblurred facial views to enable face-based analysis and recognition tasks.
 

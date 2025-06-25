@@ -21,14 +21,16 @@ Systems are evaluated on three complementary metrics:
 2. **Conversation Clustering Performance** - Pairwise F1 score for grouping speakers
 3. **Cluster-Weighted WER** (*Primary Metric*) - Combined metric weighing both transcription and clustering performance
 
-### Documentation
+### Challenge's documents
 For detailed information about the challenge, please refer to:
 - **[Challenge Overview](docs/overview.md)** - Complete challenge description and scenario details
 - **[Data Description](docs/data.md)** - Dataset structure, formats, and download instructions  
 - **[Baseline System](docs/baseline.md)** - Architecture and components of the baseline system
 - **[Challenge Rules](docs/rules.md)** - Participation rules, allowed datasets, and evaluation details
 
-## Sections
+## Getting Started
+
+### Sections
 1. <a href="#install">Installation</a>
 2. <a href="#dataset">Download MCoRec dataset</a>
 3. <a href="#running">Running the baseline system</a>
@@ -56,7 +58,7 @@ conda install ffmpeg
 pip install -r requirements.txt
 
 # Download and unzip the pre-trained model
-wget https://huggingface.co/nguyenvulebinh/mcorec_baseline/resolve/main/model-bin.zip
+wget https://huggingface.co/MCoRecChallenge/MCoRec-baseline/resolve/main/model-bin.zip
 unzip model-bin.zip
 ```
 
@@ -186,14 +188,36 @@ unzip dev_without_central_videos.zip
 
         ```sh
 
-        # Infer single session
-        python script/inference.py --session_dir path_to_session_folder 
-        # Example: python script/inference.py --session_dir data-bin/dev/session_132
+        # Basic usage - Infer single session with default AVSR Cocktail model
+        python script/inference.py --model_type avsr_cocktail --session_dir path_to_session_folder 
+        # Example: python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132
 
-        # Infer all sessions
-        python script/inference.py --session_dir "path_to_set_folder/*"
-        # Example: python script/inference.py --session_dir "data-bin/dev/*"
+        # Infer all sessions with default AVSR Cocktail model
+        python script/inference.py --model_type avsr_cocktail --session_dir "path_to_set_folder/*"
+        # Example: python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*"
+
+        # Using different model types (available options: avsr_cocktail, auto_avsr, muavic_en)
+        python script/inference.py --model_type auto_avsr --session_dir data-bin/dev/session_132
+        python script/inference.py --model_type muavic_en --session_dir data-bin/dev/session_132
+
+        # Advanced usage with custom parameters
+        python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 \
+            --beam_size 5 --max_length 20 --verbose
+
+        # Using custom checkpoint
+        python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132 \
+            --checkpoint_path ./my-custom-model --cache_dir ./my-cache
         ```
+        
+        **Available Parameters:**
+        - `--model_type` (required): Choose from `avsr_cocktail` (default/recommended), `auto_avsr`, or `muavic_en`
+        - `--session_dir` (required): Path to session folder or pattern with `*` for multiple sessions
+        - `--checkpoint_path` (optional): Path to custom model checkpoint
+        - `--cache_dir` (optional): Directory to cache models (default: `./model-bin`)
+        - `--max_length` (optional): Maximum video segment length in seconds (default: 15)
+        - `--beam_size` (optional): Beam search size for decoding (default: 3)
+        - `--verbose` (optional): Enable detailed output
+        
     * **Inference time:** Processing the complete development video set takes approximately **2 hours** on a single NVIDIA Titan RTX 24GB GPU
 
 - Running data preprocessing (Optional)
@@ -266,21 +290,12 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
     # Example: python script/evaluate.py --session_dir "data-bin/dev/*"
     ```
 
-## <a id="#results">5. Results</a>
+## <a id="finetuning">5. Finetuning AVSR model</a>
 
-The results for the baseline model on dev subset are the following:
-
-- Average Conversation Clustering F1 score: 0.8553
-- Average Speaker WER: 0.5474
-- Average Cluster-Weighted WER: 0.3550
-
-## <a id="finetuning">6. Finetuining AVSR model</a>
-
-The baseline system includes a trained model for the Audio-Visual Speech Recognition (AVSR) component. The AVSR model is based on AV-HuBERT CTC/Attention which uses AV-HuBERT as the encoder and integrates a projection layer with a Transformer decoder using joint CTC/Attention training. Details of the model are presented in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
+We provided the training script to optimize AV-HuBERT CTC/Attention architecture. Details of the model are presented in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
 
 ### Model Architecture
 
-The AVSR model combines audio and visual modalities:
 - **Encoder**: Pre-trained AV-HuBERT large model (`nguyenvulebinh/avhubert_encoder_large_noise_pt_noise_ft_433h`)
 - **Decoder**: Transformer decoder with CTC/Attention joint training
 - **Tokenization**: SentencePiece unigram tokenizer with 5000 vocabulary units
@@ -297,7 +312,9 @@ The model is trained on multiple large-scale datasets that have been preprocesse
 | **AVYT** | ~717k samples |
 | **AVYT-mix** | ~483k samples |
 
-Additional information about these datasets can be found in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
+The information about these datasets can be found in the [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178) paper.
+
+In addition to the above datasets, we also provide MCoRec train/valid [processed data](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) in the same format as the datasets above, which contains mouth ROI crop video and audio. The dataset contains 89.3k training segments and 3.98k validation segments.
 
 **Dataset Features:**
 - **Preprocessed**: All audio-visual data is pre-processed and ready for direct input to the training pipeline
@@ -309,12 +326,6 @@ The training pipeline automatically handles dataset loading and loads data in [s
 ### Training Process
 
 The training script is available at `script/train.py`.
-
-**Basic Training (Single GPU):**
-```sh
-# Run with default parameters
-python script/train.py
-```
 
 **Multi-GPU Distributed Training:**
 ```sh
@@ -381,6 +392,52 @@ You can customize training parameters using command line arguments:
 - **GPU Memory**: The default training configuration is designed to fit within **24GB GPU memory**
 - **Training Time**: With 2x NVIDIA Titan RTX 24GB GPUs, training takes approximately **56 hours per epoch**
 - **Convergence**: **200,000 steps** (total batch size 24) is typically sufficient for model convergence
+
+## <a id="#results">6. Results</a>
+
+The results for the baseline systems on the development subset are shown below. All systems share the same core components and configuration settings, with the only difference being the AVSR (Audio-Visual Speech Recognition) model architecture used.
+
+### Shared Components and Settings
+
+All baseline systems use identical default settings and components:
+
+- **Video Segmentation**: Maximum length of video segments is 15 seconds
+- **Beam Search**: Beam size of 3 for decoding
+- **Conversation Clustering**: Time-based conversation clustering approach
+- **Preprocessing Pipeline**: Same Active Speaker Detection, Face Landmark Detection, Mouth Cropping, and Video Chunking components
+
+For detailed information about these shared components, please refer to the **[Baseline System](docs/baseline.md)** documentation.
+
+### AVSR Model Variations
+
+The baseline systems differ only in their AVSR model architecture:
+
+- **BL1:** Uses [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) architecture
+    - `--model_type avsr_cocktail`
+    - `--checkpoint_path ./model-bin/avsr_cocktail`
+
+- **BL2:** Uses [MuAViC-EN](https://arxiv.org/abs/2303.00628) with AV-HuBERT Transformer decoder architecture
+    - `--model_type muavic_en`
+    - `--checkpoint_path nguyenvulebinh/AV-HuBERT-MuAViC-en`
+
+- **BL3:** Uses [Auto-AVSR](https://arxiv.org/abs/2303.14307) with Conformer CTC/Attention architecture
+    -  `--model_type auto_avsr`
+    - `--checkpoint_path ./model-bin/auto_avsr/avsr_trlrwlrs2lrs3vox2avsp_base.pth`
+
+- **BL4:** Uses [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) architecture
+    - `--model_type avsr_cocktail`
+    - `--checkpoint_path ./model-bin/avsr_cocktail_mcorec_finetune`
+
+### Performance Results
+
+| System | AVSR Model | MCoRec finetuned | Conversation Clustering | Conversation Clustering F1 Score | Speaker WER | Joint ASR-Clustering Error Rate |
+|--------|------------|------------------|------------------------|-----------------------------------|-------------|----------------------------------|
+| BL1 | [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) | No | Time-based | 0.8153 | 0.5536 | 0.3821 |
+| BL2 | [Muavic-EN](https://arxiv.org/abs/2303.00628) | No | Time-based | 0.8153 | 0.7180 | 0.4643 |
+| BL3 | [Auto-AVSR](https://arxiv.org/abs/2303.14307) | No | Time-based | 0.8153 | 0.8315 | 0.5211 |
+| BL4 | [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) | Yes | Time-based | 0.8153 | 0.4990 | 0.3548 |
+
+
 
 ## Acknowledgement
 

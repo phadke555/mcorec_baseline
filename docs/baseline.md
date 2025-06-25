@@ -55,9 +55,13 @@ The baseline system is provided at [Github](https://github.com/MCoRec/mcorec_bas
 
 #### 4. Audio-Visual Speech Recognition
 - **Purpose**: Combines audio and visual cues to transcribe speech into text for each video segment
-- **Baseline Model**: [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178)
 - **Input**: Segmented mouth crop videos with corresponding audio streams and timestamps
 - **Output**: Time-aligned transcriptions in WebVTT format with start/end timestamps for each segment
+- **Baseline Model** 
+  - **AV-HuBERT CTC/Attention**: [Cocktail-Party Audio-Visual Speech Recognition](https://arxiv.org/abs/2506.02178)
+  - **Auto-AVSR**: [Auto-AVSR: Audio-Visual Speech Recognition with Automatic Labels](https://arxiv.org/abs/2303.14307)
+  - **Muavic-EN**: [MuAViC: A Multilingual Audio-Visual Corpus for Robust Speech Recognition and Robust Speech-to-Text Translation](https://arxiv.org/abs/2303.00628)
+
 
 #### 5. Time-based Conversation Clustering
 - **Purpose**: Groups speakers into their respective conversations based on temporal speaking patterns and overlap analysis
@@ -78,8 +82,13 @@ This baseline establishes a reference implementation that participants can build
 
 ## Results
 
-The results for the baseline model on dev subset are the following:
+The results for the baseline systems on dev subset are the following:
 
-- Average Conversation Clustering F1 score: 0.8553
-- Average Speaker WER: 0.5474
-- Average Joint ASR-Clustering Error Rate: 0.3550
+| System | AVSR Model | MCoRec finetuned | Conversation Clustering | Conversation Clustering F1 Score | Speaker WER | Joint ASR-Clustering Error Rate |
+|--------|------------|------------------|------------------------|-----------------------------------|-------------|----------------------------------|
+| BL1 | [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) | No | Time-based | 0.8153 | 0.5536 | 0.3821 |
+| BL2 | [Muavic-EN](https://arxiv.org/abs/2303.00628) | No | Time-based | 0.8153 | 0.7180 | 0.4643 |
+| BL3 | [Auto-AVSR](https://arxiv.org/abs/2303.14307) | No | Time-based | 0.8153 | 0.8315 | 0.5211 |
+| BL4 | [AV-HuBERT CTC/Attention](https://arxiv.org/abs/2506.02178) | Yes | Time-based | 0.8153 | 0.4990 | 0.3548 |
+
+For detailed implementation and inference instructions, please refer to the baseline repository on [GitHub](https://github.com/MCoRec/mcorec_baseline).
