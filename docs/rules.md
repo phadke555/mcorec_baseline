@@ -10,7 +10,11 @@ nav_order: 3
 
 - The participants can use the development set to evaluate model performance during system development. It can be used to select the best model checkpoint, tune hyperparameters, and compare different system configurations. However, the dev set must not be used to train the model or update its internal parameters in any way.
 
-- For system development, participants are permitted to use the MCoRec training subset, as well as the external data and pre-trained models listed in the [Data and Pre-trained Models](#external-data-and-pre-trained-models) subsection. If you believe a public dataset or model is missing from this list, you may propose its addition before the deadline specified in the schedule.
+- For system development, participants are permitted to use the MCoRec training subset, as well as the external data and pre-trained models listed in the [Data and Pre-trained Models](#external-data-and-pre-trained-models) subsection. If you believe a public dataset or model is missing from this list, you may propose its addition until **September 30, 2025**.
+
+- For evaluation, each recording must be considered separately. The system should not be in any way fine-tuned on the entire evaluation set (e.g. by computing global statistics, gathering speaker information across multiple recordings).
+
+- Participants must submit a system description with details about their submitted system. Publishing code is not required but encouraged.
 
 Systems that do not comply with these rules (e.g., by using a private dataset) may still be submitted but will be excluded from the final rankings.
 
@@ -114,7 +118,7 @@ The **final primary metric** is the average Joint ASR-Clustering Error Rate acro
 
 ## External data and pre-trained models
 
-Besides the MCoRec dataset published with this challenge, the participants are allowed to use public datasets and pre-trained models listed below. In case you want to propose additional dataset or pre-trained model to be added to these lists, do so by contacting us at [Slack](https://join.slack.com/t/chimechallenge/shared_invite/zt-37h0cfpeb-qg5jwCgqRWCKc_3mLWVsYA) until #TBU. If you want to use a private dataset or model, you may still submit your system to the challenge, but we will not include it in the final rankings.
+Besides the MCoRec dataset published with this challenge, the participants are allowed to use public datasets and pre-trained models listed below. In case you want to propose additional dataset or pre-trained model to be added to these lists, do so by contacting us at [Slack](https://join.slack.com/t/chimechallenge/shared_invite/zt-37h0cfpeb-qg5jwCgqRWCKc_3mLWVsYA) or email to mcorecchallenge@gmail.com until **September 30, 2025**. If you want to use a private dataset or model, you may still submit your system to the challenge, but we will not include it in the final rankings.
 
 Participants may use these publicly available datasets for building the systems:
 

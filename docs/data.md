@@ -196,9 +196,9 @@ session_id
   - [dev_only_central_videos.zip \[~20.6GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_only_central_videos.zip)
   - [dev_without_central_videos.zip \[~6.12GB\]](https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_without_central_videos.zip)
 
-- MCoRec-Eval:
-  - [eval_only_central_videos.zip \[~50GB\]](#)
-  - [eval_without_central_videos.zip \[~10GB\]](#)
+- MCoRec-Eval (release date TBA):
+  - eval_only_central_videos.zip \[~50GB\]
+  - eval_without_central_videos.zip \[~10GB\]
 
 For obtaining the the MCoRec dataset, you first need to request access and then download it using your Hugging Face token. Please note that access requires signing a Data Use Agreement.
 
