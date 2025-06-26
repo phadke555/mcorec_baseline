@@ -417,6 +417,13 @@ def main():
         help='Enable verbose output'
     )
     
+    parser.add_argument(
+        '--output_dir_name',
+        type=str,
+        default='output',
+        help='Name of the output directory within each session (default: output)'
+    )
+    
     args = parser.parse_args()
     
     # Initialize inference engine
@@ -432,7 +439,7 @@ def main():
     print(f"Inferring {len(all_session_dirs)} sessions using {args.model_type} model")
     
     for session_dir in all_session_dirs:
-        output_dir = os.path.join(session_dir, "output")
+        output_dir = os.path.join(session_dir, args.output_dir_name)
         os.makedirs(output_dir, exist_ok=True)
         
         session_name = session_dir.split('/')[-1]

@@ -192,22 +192,29 @@ unzip dev_without_central_videos.zip
         ```sh
         # BL1: AV-HuBERT CTC/Attention
         python script/inference.py --model_type avsr_cocktail --session_dir data-bin/dev/session_132
-        # For all dev sessions: python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*"
+        # For all dev sessions: 
+        python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*" \
+            --checkpoint_path ./model-bin/avsr_cocktail \
+            --beam_size 3 --max_length 15 \
+            --output_dir_name output_avsr_cocktail
 
         # BL2: MuAViC-EN with AV-HuBERT Transformer decoder
         python script/inference.py --model_type muavic_en --session_dir "data-bin/dev/*" \
             --checkpoint_path nguyenvulebinh/AV-HuBERT-MuAViC-en \
-            --max_length 15
+            --max_length 15 \
+            --output_dir_name output_muavic_en
 
         # BL3: Auto-AVSR with Conformer CTC/Attention
         python script/inference.py --model_type auto_avsr --session_dir "data-bin/dev/*" \
             --checkpoint_path ./model-bin/auto_avsr/avsr_trlrwlrs2lrs3vox2avsp_base.pth \
-            --beam_size 3 --max_length 15
+            --beam_size 3 --max_length 15 \
+            --output_dir_name output_auto_avsr
 
         # BL4: AV-HuBERT CTC/Attention (MCoRec fine-tuned)
         python script/inference.py --model_type avsr_cocktail --session_dir "data-bin/dev/*" \
             --checkpoint_path ./model-bin/avsr_cocktail_mcorec_finetune \
-            --beam_size 3 --max_length 15
+            --beam_size 3 --max_length 15 \
+            --output_dir_name output_avsr_cocktail_finetuned
         ```
         
         **Available Parameters:**
@@ -217,6 +224,7 @@ unzip dev_without_central_videos.zip
         - `--cache_dir` (optional): Directory to cache models (default: `./model-bin`)
         - `--max_length` (optional): Maximum video segment length in seconds (default: 15)
         - `--beam_size` (optional): Beam search size for decoding (default: 3)
+        - `--output_dir_name` (optional): Name of output directory within each session (default: `output`)
         - `--verbose` (optional): Enable detailed output
 
         **Note:** All pretrained models (BL1 and BL4: `avsr_cocktail`, BL3: `auto_avsr`) should be located in the `model-bin/` folder, which was downloaded and unzipped during the [Installation section](#install). The BL2 model (`nguyenvulebinh/AV-HuBERT-MuAViC-en`) will be automatically downloaded from Hugging Face when specified in the checkpoint path.
@@ -291,7 +299,15 @@ The `evaluate.py` script calculates performance metrics based on the system's ou
     # Evaluating all sessions
     python script/evaluate.py --session_dir "path_to_set_folder/*"
     # Example: python script/evaluate.py --session_dir "data-bin/dev/*"
+
+    # Using custom directory names
+    python script/evaluate.py --session_dir "data-bin/dev/*" --output_dir_name output --label_dir_name labels
     ```
+    
+    **Available Parameters:**
+    - `--session_dir` (required): Path to session folder or pattern with `*` for multiple sessions
+    - `--output_dir_name` (optional): Name of output directory within each session (default: `output`)
+    - `--label_dir_name` (optional): Name of label directory within each session (default: `labels`)
 
 ## <a id="finetuning">5. Finetuning AVSR model</a>
 

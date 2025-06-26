@@ -66,6 +66,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Evaluate speaker clustering and transcripts from video")
     parser.add_argument('--session_dir', type=str, required=True, help='Path to folder containing session data')
+    parser.add_argument('--output_dir_name', type=str, default='output', help='Name of the output directory within each session (default: output)')
+    parser.add_argument('--label_dir_name', type=str, default='labels', help='Name of the label directory within each session (default: labels)')
     opt = parser.parse_args()
 
     if opt.session_dir.strip().endswith("*"):
@@ -80,8 +82,8 @@ def main():
 
     for session_dir in all_session_dirs:
         print(f"Evaluating session {session_dir.split('/')[-1]}")
-        label_path = os.path.join(session_dir, "labels")
-        output_path = os.path.join(session_dir, "output")
+        label_path = os.path.join(session_dir, opt.label_dir_name)
+        output_path = os.path.join(session_dir, opt.output_dir_name)
         assert os.path.exists(label_path), "Label path does not exist"
         assert os.path.exists(output_path), "Output path does not exist"
         
