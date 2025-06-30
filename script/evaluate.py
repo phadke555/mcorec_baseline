@@ -84,8 +84,8 @@ def main():
         print(f"Evaluating session {session_dir.split('/')[-1]}")
         label_path = os.path.join(session_dir, opt.label_dir_name)
         output_path = os.path.join(session_dir, opt.output_dir_name)
-        assert os.path.exists(label_path), "Label path does not exist"
-        assert os.path.exists(output_path), "Output path does not exist"
+        assert os.path.exists(label_path), f"Label path {label_path} does not exist"
+        assert os.path.exists(output_path), f"Output path {output_path} does not exist"
         
         with open(os.path.join(session_dir, "metadata.json"), "r") as f:
             metadata = json.load(f)

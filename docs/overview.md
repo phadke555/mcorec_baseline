@@ -2,7 +2,7 @@
 layout: page
 title: Overview
 parent: CHiME-9 Task 1 - MCoRec
-nav_order: 0
+nav_order: 1
 ---
 
 # CHiME-9 Task 1: Multi-Modal Context-aware Recognition (MCoRec)

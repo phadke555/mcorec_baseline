@@ -2,7 +2,7 @@
 layout: page
 title: Data
 parent: CHiME-9 Task 1 - MCoRec
-nav_order: 1
+nav_order: 3
 ---
 
 The [MCoRec dataset](https://huggingface.co/datasets/MCoRecChallenge/MCoRec) contains video recording sessions. A single recording session typically features multiple conversations, each involving two or more participants. A 360° camera, placed in the middle of the room, captures the central view which contains all participants. The audio for the sessions is also captured by the microphone integrated into the 360° camera. Each session can involve a maximum of 8 active speakers and up to 4 simultaneous conversations. With multiple concurrent discussions, the speech overlap ratio in the mixed audio can reach 100%. The image below shows an example of a recording session with 6 participants engaged in 3 separate conversations, each consisting of 2 speakers.
@@ -34,7 +34,7 @@ The participants can use the development set to evaluating model performance dur
 
 **Important Note**: The smartphone recordings (egocentric videos and close-talking audio from lapel microphones) are **only available for the training set**. The development and evaluation sets contain **only the central 360° video and audio** captured by the central camera.
 
-Note that the number of people show in the central view can be more than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
+The number of people show in the central view can be more than the number of paticipants which need to be processed. The target participants will be provided by the bbox.
 
 ## Detailed desciption of data structure and formats
 
@@ -182,7 +182,7 @@ session_id
 
   - Each speaker-specific object contains detailed information about their associated data from both `ego` and `central` views. Note: `ego` only provided in the train set.
 
-  - `uem`: An object with `start` and `end` attributes (in seconds), marking the beginning and end of the primary conversation within the recording.
+  - `uem`: An object with `start` and `end` attributes (in seconds), marking the timestamps when the whistle signals indicate the beginning and end of the primary conversation within the recording. This `uem` can be used to temporally align the corresponding streams from different videos (`ego` and `central` view).
 
 - The `central_video.mp4`, `ego_video.mp4` (if provied) videos and derived face crops (`central_crops/`, `ego_crops/`) are provided with clear, unblurred facial views of the target participants. 
 
@@ -225,9 +225,10 @@ cd data-bin
 # Export your Hugging Face token (replace 'your_actual_token_here' with your actual token)
 export HF_TOKEN=your_actual_token_here
 
-# Download the development set
+# Link to download you can copy above.
+# Example download the development set dev_without_central_videos.zip
 wget --header="Authorization: Bearer $HF_TOKEN" https://huggingface.co/datasets/MCoRecChallenge/MCoRec/resolve/main/dev_without_central_videos.zip
 
 # Unzip the downloaded files
-unzip dev_without_central_videos.zip
+unzip dev_without_central_videos.zip -d data-bin
 ```

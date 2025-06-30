@@ -2,7 +2,7 @@
 layout: page
 title: Baseline System
 parent: CHiME-9 Task 1 - MCoRec
-nav_order: 3
+nav_order: 4
 ---
 
 # Baseline System

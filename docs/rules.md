@@ -2,7 +2,7 @@
 layout: page
 title: Rules
 parent: CHiME-9 Task 1 - MCoRec
-nav_order: 3
+nav_order: 5
 ---
 
 ## Summary of the rules for systems participating in the challenge:
