@@ -1,7 +1,8 @@
 ---
 layout: page
-title: Overview
-parent: CHiME-9 Task 1 - MCoRec
+title: CHiME-9 Task 1 - MCoRec
+has_children: true
+parent: CHiME-9
 nav_order: 1
 ---
 
@@ -62,15 +63,19 @@ The evaluation uses **three complementary metrics**:
 
 * **Data Release**: July 1st, 2025 (train and dev sets)
 * **Evaluation Data Release**: TBU
-* **Final Submission Deadline**: TBU  
-* **Results Announcement**: TBU
+* **Final Submission Deadline**: 7 Feb 2026  
+* **Results Announcement**: 3 May 2026
 * **Workshop**: TBU
 
 ## Organizers
 
-- Alexander Waibel (CMU, USA & KIT, DE),
-- Christian Fuegen (Meta, UK),
+- Alexander Waibel (CMU, USA & KIT, DE)
+- Christian Fuegen (Meta, UK)
 - Shinji Watanabe (CMU, USA)
-- Katerina Zmolikova (Meta, UK),
-- Thai-Binh Nguyen (KIT, DE),
+- Katerina Zmolikova (Meta, UK)
+- Thai-Binh Nguyen (KIT, DE)
 - Pingchuan Ma (Meta, USA)
+
+For any questions about the challenge, please contact us:
+- Email: [mcorecchallenge@gmail.com](mailto:mcorecchallenge@gmail.com) 
+- Slack: [CHiME Challenge Community](https://join.slack.com/t/chimechallenge/shared_invite/zt-37h0cfpeb-qg5jwCgqRWCKc_3mLWVsYA)

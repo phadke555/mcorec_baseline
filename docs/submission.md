@@ -5,7 +5,7 @@ parent: CHiME-9 Task 1 - MCoRec
 nav_order: 6
 ---
 
-The submission of the systems is open until **TBU** and should be done through [Google Form - TBU](TBU). We allow each team to submit up to **three systems** for the challenge. For the submission, make sure to have the following ready:
+The submission of the systems is open until **TBU** and should be done through [Google Form - TBU](#). We allow each team to submit up to **three systems** for the challenge. For the submission, make sure to have the following ready:
 
 - Technical description paper
 - System outputs for development and evaluation subset
