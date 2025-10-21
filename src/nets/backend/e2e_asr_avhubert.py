@@ -117,6 +117,7 @@ class E2E(torch.nn.Module):
             self.ctc = None
 
     def forward(self, video, audio, video_lengths, audio_lengths, label):
+        import pdb; pdb.set_trace()
         video_padding_mask = make_non_pad_mask(video_lengths).to(video.device)
         # attention_mask = 
         avhubert_features = self.encoder(
