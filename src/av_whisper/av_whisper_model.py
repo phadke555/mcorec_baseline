@@ -1,5 +1,4 @@
 from transformers.models.whisper.modeling_whisper import (
-    WHISPER_ATTENTION_CLASSES,
     WhisperConfig,
     WhisperEncoder,
     WhisperEncoderLayer,
@@ -128,6 +127,7 @@ class AVWhisperEncoder(WhisperEncoder):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+        **kwargs
     ):
         r"""
         Args:
@@ -252,13 +252,13 @@ class AVEncoder(nn.Module):
         self.config = config
         
         # Load DINOv3 model for vision encoding
-        self.vision_encoder = AutoModel.from_pretrained("facebook/dinov3-vits16-pretrain-lvd1689m")
+        self.vision_encoder = torch.hub.load("/home/rphadke1/chime/dinov3", 'dinov3_vits16', source='local', weights="/export/fs06/rphadke1/data/mcorec/model-bin/avwhisper/dinov3_vits16_pretrain_lvd1689m-08c60483.pth")
         
         # Initialize AVWhisperEncoder for audio encoding
         self.audio_encoder = AVWhisperEncoder(config)
         
         # Get DINOv3 feature dimension (typically 384 for vit-small)
-        dinov3_feature_dim = self.vision_encoder.config.hidden_size
+        dinov3_feature_dim = 384
         
         # Linear projection to transform vision features to d_model
         self.vision_projection = nn.Linear(dinov3_feature_dim, config.d_model)
@@ -269,13 +269,14 @@ class AVEncoder(nn.Module):
     def forward(
         self,
         audio_features,
-        video=None,
+        videos=None,
         audio_lengths=None,
         video_lengths=None,
         attention_mask=None,
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+        **kwargs
     ):
         """
         Forward pass through the audio-visual encoder.
@@ -293,21 +294,18 @@ class AVEncoder(nn.Module):
         Returns:
             BaseModelOutput with audio-visual encoded features
         """
+        import pdb; pdb.set_trace()
         vision_features = None
         vision_pad_mask = None
         
-        if video is not None:
-            # Process video through DINOv3
-            B, C, T_v, H, W = video.shape
+        if videos is not None:
+            # Process videos through DINOv3
+            B, C, T_v, H, W = videos.shape
             # (B*T_v, C, H, W)
-            video = video.permute(0, 2, 1, 3, 4).contiguous().view(B * T_v, C, H, W)
-            
-            # Normalize video to [0, 1] if it's in [0, 255] range
-            if video.max() > 1.0:
-                video = video / 255.0
+            videos = videos.permute(0, 2, 1, 3, 4).contiguous().view(B * T_v, C, H, W)
             
             # Extract features using DINOv3
-            vision_features = self.vision_encoder(video)
+            vision_features = self.vision_encoder(videos)
             vision_features = vision_features.get("x_norm_clstoken",vision_features.last_hidden_state[:, 0])  # x_norm_clstoken features
             
             # (B, T_v, feature_dim), is this really true?
@@ -318,7 +316,7 @@ class AVEncoder(nn.Module):
             
             # Create vision padding mask if video_lengths provided
             if video_lengths is not None:
-                vision_pad_mask = torch.arange(T_v, device=video.device).expand(B, T_v) >= video_lengths.unsqueeze(1)
+                vision_pad_mask = torch.arange(T_v, device=videos.device).expand(B, T_v) >= video_lengths.unsqueeze(1)
         
         # Pass through AVWhisperEncoder
         return self.audio_encoder(
@@ -348,7 +346,7 @@ class AVWhisperModel(WhisperModel):
             Audio input features for the encoder.
         attention_mask (`torch.BoolTensor`, *optional*):
             Audio attention mask.
-        video (`torch.FloatTensor`, *optional*):
+        videos (`torch.FloatTensor`, *optional*):
             Video frames or vision features.
         video_lengths (`torch.LongTensor`, *optional*):
             True video lengths for padding masks.
@@ -360,7 +358,7 @@ class AVWhisperModel(WhisperModel):
             Same structure as Whisper’s base model outputs.
 
     Notes:
-        - When video is not provided, this model behaves identically to Whisper.
+        - When videos is not provided, this model behaves identically to Whisper.
         - Decoder caching, beam search, and `generate()` remain unchanged.
         - Compatible with pretrained Whisper weights through `from_pretrained()`.
     """
@@ -370,7 +368,7 @@ class AVWhisperModel(WhisperModel):
     def forward(
             self,
             input_features: Optional[torch.FloatTensor] = None,
-            video: Optional[torch.FloatTensor] = None,
+            videos: Optional[torch.FloatTensor] = None,
             video_lengths: Optional[torch.LongTensor] = None,
             attention_mask: Optional[torch.LongTensor] = None,
             decoder_input_ids: Optional[torch.LongTensor] = None,
@@ -388,6 +386,7 @@ class AVWhisperModel(WhisperModel):
             return_dict: Optional[bool] = None,
             vad_mask: Optional[torch.FloatTensor] = None,
             per_group_sizes: Optional[torch.LongTensor] = None,
+            **kwargs
     ) -> Union[Tuple[torch.Tensor], Seq2SeqModelOutput]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -401,7 +400,7 @@ class AVWhisperModel(WhisperModel):
 
             encoder_outputs = self.encoder(
                 input_features,
-                video=video,
+                videos=videos,
                 video_lengths=video_lengths,
                 output_attentions=output_attentions,
                 output_hidden_states=True,
@@ -457,7 +456,7 @@ class AVWhisperForConditionalGeneration(WhisperForConditionalGeneration):
             Decoder input token IDs.
         labels (`torch.LongTensor`, *optional*):
             Target token IDs for teacher forcing.
-        video (`torch.FloatTensor`, *optional*):
+        videos (`torch.FloatTensor`, *optional*):
             Video frames or precomputed vision embeddings.
         video_lengths (`torch.LongTensor`, *optional*):
             True video lengths for padding masks.
@@ -480,7 +479,8 @@ class AVWhisperForConditionalGeneration(WhisperForConditionalGeneration):
     def forward(
         self,
         input_features: Optional[torch.FloatTensor] = None,
-        video: Optional[torch.FloatTensor] = None,
+        input_feature_lengths: Optional[torch.LongTensor] = None,
+        videos: Optional[torch.FloatTensor] = None,
         video_lengths: Optional[torch.LongTensor] = None,
         attention_mask: Optional[torch.LongTensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
@@ -490,12 +490,15 @@ class AVWhisperForConditionalGeneration(WhisperForConditionalGeneration):
         decoder_inputs_embeds: Optional[tuple[torch.FloatTensor]] = None,
         decoder_position_ids: Optional[tuple[torch.LongTensor]] = None,
         labels: Optional[torch.LongTensor] = None,
+        label_lengths: Optional[torch.LongTensor] = None,
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None,
+        **kwargs
     ) -> Union[tuple[torch.Tensor], Seq2SeqLMOutput]:
+        import pdb; pdb.set_trace()
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         if labels is not None:
@@ -510,7 +513,7 @@ class AVWhisperForConditionalGeneration(WhisperForConditionalGeneration):
 
         outputs = self.model(
             input_features,
-            video=video,
+            videos=videos,
             video_lengths=video_lengths,
             attention_mask=attention_mask,
             decoder_input_ids=decoder_input_ids,

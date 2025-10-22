@@ -3,11 +3,11 @@ import sys
 os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 import torch
 from datasets import load_from_disk
-from src.dataset.avwhisper_dataset import create_avwhisper_collator
+from src.dataset.avwhisper_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
 from src.tokenizer.spm_tokenizer import TextTransform
 from src.av_whisper.av_whisper_model import AVWhisperForConditionalGeneration
 from transformers import TrainingArguments, WhisperProcessor, WhisperConfig
-from transformers import Trainer
+from src.custom_trainer import AVSRTrainer
 from transformers.trainer_utils import IntervalStrategy
 from torchsummary import summary
 import safetensors.torch
@@ -36,7 +36,7 @@ os.environ['WANDB_PROJECT'] = 'mcorec'
 
 
 
-def load_avsr_dataset(cache_dir='data-bin/cache', include_mcorec=True, streaming=False):
+def load_avsr_dataset(cache_dir='/export/fs06/rphadke1/data/mcorec/data-bin/cache', include_mcorec=True, streaming=False):
     # streaming=True to avoid downloading all dataset at once, but it can be crash if network is unstable
     # streaming=False to download all dataset at once, it take time and around 1.5TB disk space. More stable.
 
@@ -181,10 +181,9 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_steps", type=int, default=4000)
     parser.add_argument("--resume_from_checkpoint", action="store_true", default=False)
     parser.add_argument("--checkpoint_name", type=str, default="mcorec_finetuning")
-    parser.add_argument("--model_name_or_path", type=str, default="./model-bin/avwhisper") # Or None to train from scratch
+    parser.add_argument("--model_name_or_path", type=str) # Or None to train from scratch
     parser.add_argument("--report_to", type=str, default="none") # wandb or none
     parser.add_argument("--output_dir", type=str, default=os.path.join(os.path.dirname(os.path.dirname(__file__)), f"model-bin"))
-    parser.add_argument("--max_video_frames", type=int, default=300, help="Maximum number of video frames to process")
     parser.add_argument("--whisper_model", type=str, default="openai/whisper-small", help="Whisper model to use as base")
 
     args = parser.parse_args()
@@ -204,13 +203,19 @@ if __name__ == "__main__":
     model_name_or_path = args.model_name_or_path # Or None to train from scratch
     output_dir = os.path.join(args.output_dir, checkpoint_name)
     report_to = args.report_to
-    max_video_frames = args.max_video_frames
     whisper_model = args.whisper_model
     
     # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
+    # Load Whisper Processor
+    processor = WhisperProcessor.from_pretrained(whisper_model)
+    if hasattr(processor, "tokenizer"):
+        try:
+            processor.tokenizer.set_prefix_tokens(language="en", task="transcribe")
+        except Exception:
+            pass
 
     # Load text transform
     sp_model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src/tokenizer/spm/unigram/unigram5000.model")
@@ -220,59 +225,39 @@ if __name__ == "__main__":
         dict_path=dict_path,
     )
     
-    # Load WhisperProcessor
-    print(f"Loading WhisperProcessor from {whisper_model}...")
-    processor = WhisperProcessor.from_pretrained(whisper_model)
-    
-    # Load AVWhisper model
     if model_name_or_path is not None and os.path.exists(model_name_or_path):
-        print("Loading pretrained AVWhisper model from", model_name_or_path)
-        # Note: You'll need to implement from_pretrained for AVWhisperForConditionalGeneration
-        # For now, we'll load from scratch and you can add checkpoint loading later
-        config = WhisperConfig.from_pretrained(whisper_model)
-        avwhisper_model = AVWhisperForConditionalGeneration(config)
+        print("Loading pretrained AVWhisper checkpoint from", model_name_or_path)
+        avsr_model = AVWhisperForConditionalGeneration.from_pretrained(model_name_or_path)
     else:
-        # Load from scratch
-        print("Loading AVWhisper model from scratch")
-        config = WhisperConfig.from_pretrained(whisper_model)
-        avwhisper_model = AVWhisperForConditionalGeneration(config)
-        
-        # Load pretrained Whisper weights (optional - you can skip this for now)
-        print("Loading pretrained Whisper weights...")
+        print("Initializing AVWhisper from Whisper base:", args.whisper_model)
+        # Prefer loading weights directly from HF base
         try:
-            from transformers import WhisperForConditionalGeneration
-            pretrained_whisper = WhisperForConditionalGeneration.from_pretrained(whisper_model)
-            # Copy decoder weights (but not the encoder since we have a custom AVEncoder)
-            avwhisper_model.model.decoder.load_state_dict(pretrained_whisper.model.decoder.state_dict())
-            # Copy the lm_head weights
-            avwhisper_model.proj_out.load_state_dict(pretrained_whisper.proj_out.state_dict())
-            print("Loaded pretrained Whisper decoder and projection weights")
-        except Exception as e:
-            print(f"Could not load pretrained Whisper weights: {e}")
-            print("Training from scratch...")
+            avsr_model = AVWhisperForConditionalGeneration.from_pretrained(args.whisper_model)
+        except Exception:
+            # Fallback: build from config if your wrapper needs init first
+            avsr_config = WhisperConfig.from_pretrained(args.whisper_model)
+            avsr_model = AVWhisperForConditionalGeneration(avsr_config).from_pretrained(args.whisper_model)
     
     # Load dataset
     train_dataset, valid_dataset, interference_dataset = load_avsr_dataset(streaming=streaming_dataset, include_mcorec=include_mcorec)
         
-    # Create AVWhisper data collators
-    print("Creating AVWhisper data collators...")
-    train_av_data_collator = create_avwhisper_collator(
-        processor=processor,
+    train_av_data_collator = DataCollator(
         text_transform=text_transform,
-        subset="train",
-        max_video_frames=max_video_frames
+        audio_transform=AudioTransform(subset="train", speech_dataset=interference_dataset, whisper_processor=processor,),
+        video_transform=VideoTransform(subset="train"),
+        whisper_processor=processor,
     )
-    valid_av_data_collator = create_avwhisper_collator(
-        processor=processor,
+    valid_av_data_collator = DataCollator(
         text_transform=text_transform,
-        subset="test",
-        max_video_frames=max_video_frames
+        audio_transform=AudioTransform(subset="test", whisper_processor=processor,),
+        video_transform=VideoTransform(subset="test"),
+        whisper_processor=processor,
     )
     
     
     print("train_dataset\n", train_dataset)
     print("valid_dataset\n", valid_dataset)
-    summary(avwhisper_model)
+    summary(avsr_model)
     
     
     training_args = TrainingArguments(
@@ -294,7 +279,7 @@ if __name__ == "__main__":
         fp16=True,
         gradient_checkpointing=False, 
         remove_unused_columns=False,
-        dataloader_num_workers=10,
+        dataloader_num_workers=2,
         # save_only_model=True, # WARNING: this will save only model and not optimizer, scheduler, etc.
         save_steps=save_steps,
         eval_steps=eval_steps,
@@ -317,20 +302,13 @@ if __name__ == "__main__":
         # ddp_find_unused_parameters=True
     )
     
-    # Custom compute metrics function for evaluation
-    def compute_metrics(eval_pred):
-        predictions, labels = eval_pred
-        # For now, just return a simple metric
-        # You can implement WER/CER calculation here later
-        return {"eval_loss": 0.0}
-    
-    trainer = Trainer(
-        model=avwhisper_model,
+    trainer = AVSRTrainer(
+        model=avsr_model,
         data_collator=train_av_data_collator,
+        valid_data_collator=valid_av_data_collator,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=valid_dataset,
-        compute_metrics=compute_metrics,
     )
 
     if not resume_from_checkpoint:

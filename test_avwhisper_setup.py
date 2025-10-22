@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test script to verify AVWhisper setup works correctly.
 Run this before training to check for any issues.
@@ -6,7 +5,7 @@ Run this before training to check for any issues.
 
 import os
 import sys
-os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
+# os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 
 def test_imports():
     """Test that all required imports work."""
@@ -14,12 +13,12 @@ def test_imports():
     try:
         from transformers import WhisperProcessor, WhisperConfig
         from src.av_whisper.av_whisper_model import AVWhisperForConditionalGeneration
-        from src.dataset.avwhisper_dataset import create_avwhisper_collator
+        from src.dataset.avwhisper_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
         from src.tokenizer.spm_tokenizer import TextTransform
-        print("✅ All imports successful!")
+        print("All imports successful!")
         return True
     except Exception as e:
-        print(f"❌ Import error: {e}")
+        print(f"Import error: {e}")
         return False
 
 def test_model_creation():
@@ -29,13 +28,15 @@ def test_model_creation():
         from transformers import WhisperConfig
         from src.av_whisper.av_whisper_model import AVWhisperForConditionalGeneration
         
-        config = WhisperConfig.from_pretrained("openai/whisper-small")
-        model = AVWhisperForConditionalGeneration(config)
-        print("✅ AVWhisper model created successfully!")
+        config = WhisperConfig.from_pretrained("openai/whisper-large")
+        model = AVWhisperForConditionalGeneration(config).from_pretrained("openai/whisper-large")
+        print("AVWhisper model created successfully!")
+        print(model)
+        print(f"   Whisper Model hidden size: {config.d_model}")
         print(f"   Model parameters: {sum(p.numel() for p in model.parameters()):,}")
         return True
     except Exception as e:
-        print(f"❌ Model creation error: {e}")
+        print(f"Model creation error: {e}")
         return False
 
 def test_processor_creation():
@@ -44,39 +45,10 @@ def test_processor_creation():
     try:
         from transformers import WhisperProcessor
         processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-        print("✅ WhisperProcessor created successfully!")
+        print("WhisperProcessor created successfully!")
         return True
     except Exception as e:
-        print(f"❌ Processor creation error: {e}")
-        return False
-
-def test_collator_creation():
-    """Test that the data collator can be created."""
-    print("\nTesting collator creation...")
-    try:
-        from transformers import WhisperProcessor
-        from src.dataset.avwhisper_dataset import create_avwhisper_collator
-        from src.tokenizer.spm_tokenizer import TextTransform
-        
-        # Create dummy paths (they don't need to exist for this test)
-        sp_model_path = "src/tokenizer/spm/unigram/unigram5000.model"
-        dict_path = "src/tokenizer/spm/unigram/unigram5000_units.txt"
-        
-        text_transform = TextTransform(
-            sp_model_path=sp_model_path,
-            dict_path=dict_path,
-        )
-        
-        processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-        collator = create_avwhisper_collator(
-            processor=processor,
-            text_transform=text_transform,
-            subset="train"
-        )
-        print("✅ Data collator created successfully!")
-        return True
-    except Exception as e:
-        print(f"❌ Collator creation error: {e}")
+        print(f"Processor creation error: {e}")
         return False
 
 def test_dinov3_loading():
@@ -84,12 +56,14 @@ def test_dinov3_loading():
     print("\nTesting DINOv3 loading...")
     try:
         from transformers import AutoModel
-        dinov3 = AutoModel.from_pretrained("facebook/dinov3-vits16-pretrain-lvd1689m")
-        print("✅ DINOv3 model loaded successfully!")
-        print(f"   DINOv3 hidden size: {dinov3.config.hidden_size}")
+        import torch
+        dinov3 = torch.hub.load("/home/rphadke1/chime/dinov3", 'dinov3_vits16', source='local', weights="/export/fs06/rphadke1/data/mcorec/model-bin/avwhisper/dinov3_vits16_pretrain_lvd1689m-08c60483.pth")
+        print("DINOv3 model loaded successfully!")
+        print(dinov3)
+        # print(f"   DINOv3 hidden size: {dinov3.config.hidden_size}")
         return True
     except Exception as e:
-        print(f"❌ DINOv3 loading error: {e}")
+        print(f"DINOv3 loading error: {e}")
         return False
 
 def main():
@@ -101,8 +75,7 @@ def main():
         test_imports,
         test_processor_creation,
         test_dinov3_loading,
-        test_model_creation,
-        test_collator_creation,
+        test_model_creation
     ]
     
     results = []
