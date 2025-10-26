@@ -27,7 +27,7 @@ os.environ["HF_HUB_ETAG_TIMEOUT"] = "600"  # seconds
 os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "600"
 os.environ['WANDB_PROJECT'] = 'mcorec'
 
-# NCCL_DEBUG=WARN OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node 2 script/train.py \
+# NCCL_DEBUG=WARN OMP_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node 2 script/train_avdicow.py \
 # --streaming_dataset \
 # --include_mcorec \
 # --batch_size 6 \
@@ -36,10 +36,9 @@ os.environ['WANDB_PROJECT'] = 'mcorec'
 # --save_steps 2000 \
 # --eval_steps 2000 \
 # --log_interval 25 \
-# --learning_rate 1e-4 \
+# --learning_rate 1e-8 \
 # --warmup_steps 4000 \
 # --checkpoint_name mcorec_finetuning \
-# --model_name_or_path ./model-bin/avsr_cocktail \
 # --output_dir ./model-bin
 
 def stno_from_cut(cut, target_speaker=None):
