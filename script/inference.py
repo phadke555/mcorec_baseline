@@ -21,6 +21,7 @@ from src.cluster.conv_spks import (
     cluster_speakers, 
     get_clustering_f1_score
 )
+import numpy as np
 
 
 class BaseInferenceModel(ABC):
@@ -220,6 +221,7 @@ class AVDICOWModel(BaseInferenceModel):
         if hasattr(whisper_processor, "tokenizer"):
             try:
                 whisper_processor.tokenizer.set_prefix_tokens(language="en", task="transcribe")
+                self.tokenizer = whisper_processor.tokenizer
             except Exception:
                 pass
         
@@ -241,54 +243,63 @@ class AVDICOWModel(BaseInferenceModel):
             model_name, 
             cache_dir=self.cache_dir
         )
+        if model_name == 'BUT-FIT/DiCoW_v3_2':
+            from transformers import AutoModel
+            self.model.model.encoder.set_vision_encoder(AutoModel.from_pretrained("facebook/dinov3-vits16-pretrain-lvd1689m"))
         self.model.tokenizer = whisper_processor.tokenizer
         self.model = self.model.cuda().eval()
     
-    def inference(self, videos, audios, **kwargs):
+    def inference(self, videos, audios, stno_mask, **kwargs):
         # DiCoW expects input_features and vision_features
         # The model expects the audio to be processed as input_features
         # and video as vision_features
+        attention_mask = torch.ones(audios.size(0), audios.size(-1), dtype=torch.bool).cuda()
         output = self.model.generate(
             input_features=audios,
             vision_features=videos,
+            attention_mask=attention_mask,
+            stno_mask=stno_mask
         )
+        import pdb;pdb.set_trace()
+        output = self.tokenizer.batch_decode(output)
+        return output
         
-        # Handle the output format - DiCoW returns segments with text
-        # The output can be a dict with 'segments' key or a list of segments
-        if isinstance(output, dict):
-            if 'segments' in output:
-                # Extract text from segments
-                text_parts = []
-                for segment in output['segments']:
-                    if isinstance(segment, dict) and 'text' in segment:
-                        text_parts.append(segment['text'].strip())
-                return ' '.join(text_parts).upper() if text_parts else ""
-            elif 'text' in output:
-                return output['text'].upper()
-            else:
-                # Try to find any text-like keys
-                for key in ['transcription', 'transcript', 'result']:
-                    if key in output:
-                        return str(output[key]).upper()
-        elif isinstance(output, list) and len(output) > 0:
-            # If it's a list of segments, concatenate the text
-            text_parts = []
-            for segment in output:
-                if isinstance(segment, dict) and 'text' in segment:
-                    text_parts.append(segment['text'].strip())
-                elif isinstance(segment, str):
-                    text_parts.append(segment.strip())
-            return ' '.join(text_parts).upper() if text_parts else ""
-        else:
-            # Fallback: try to decode as token IDs
-            if hasattr(self.model, 'tokenizer') and self.model.tokenizer is not None:
-                try:
-                    return self.model.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
-                except:
-                    pass
+        # # Handle the output format - DiCoW returns segments with text
+        # # The output can be a dict with 'segments' key or a list of segments
+        # if isinstance(output, dict):
+        #     if 'segments' in output:
+        #         # Extract text from segments
+        #         text_parts = []
+        #         for segment in output['segments']:
+        #             if isinstance(segment, dict) and 'text' in segment:
+        #                 text_parts.append(segment['text'].strip())
+        #         return ' '.join(text_parts).upper() if text_parts else ""
+        #     elif 'text' in output:
+        #         return output['text'].upper()
+        #     else:
+        #         # Try to find any text-like keys
+        #         for key in ['transcription', 'transcript', 'result']:
+        #             if key in output:
+        #                 return str(output[key]).upper()
+        # elif isinstance(output, list) and len(output) > 0:
+        #     # If it's a list of segments, concatenate the text
+        #     text_parts = []
+        #     for segment in output:
+        #         if isinstance(segment, dict) and 'text' in segment:
+        #             text_parts.append(segment['text'].strip())
+        #         elif isinstance(segment, str):
+        #             text_parts.append(segment.strip())
+        #     return ' '.join(text_parts).upper() if text_parts else ""
+        # else:
+        #     # Fallback: try to decode as token IDs
+        #     if hasattr(self.model, 'tokenizer') and self.model.tokenizer is not None:
+        #         try:
+        #             return self.model.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
+        #         except:
+        #             pass
         
-        # Final fallback
-        return str(output).upper() if output else ""
+        # # Final fallback
+        # return str(output).upper() if output else ""
 
 
 class InferenceEngine:
@@ -372,12 +383,17 @@ class InferenceEngine:
         for seg in tqdm(segments, desc="Processing segments" if desc is None else desc, total=len(segments)):
             # Prepare sample
             if self.model_type == "av_dicow":
-                # DiCoW expects both video and audio paths
+                # DiCoW expects both video and audio paths and stno masks
+                segment_duration = seg[1] - seg[0]
+                num_audio_samples = int(segment_duration * 16000)
+                vad_mask = np.zeros((4, num_audio_samples), dtype=np.float32)
+                vad_mask[1, :] = 1.0 
                 sample = {
                     "video": video_path,
                     "audio": video_path,  # For DiCoW, audio is extracted from the same video file
                     "start_time": seg[0],
                     "end_time": seg[1],
+                    "vad_mask": vad_mask,
                 }
             else:
                 # Other models only need video path
@@ -386,15 +402,25 @@ class InferenceEngine:
                     "start_time": seg[0],
                     "end_time": seg[1],
                 }
-            sample_features = self.model_impl.av_data_collator([sample])
+
+            try:
+                sample_features = self.model_impl.av_data_collator([sample])
+            except Exception as e:
+                print(f"Error in data collator for sample {sample}: {e}")
+                # Skip this segment if data loading fails
+                continue
             
             # Handle different model types with different key names
             if self.model_type == "av_dicow":
+                import pdb; pdb.set_trace()
                 audios = sample_features["input_features"].cuda()
                 videos = sample_features["vision_features"].cuda()
                 # DiCoW doesn't use separate length tensors in the same way
                 audio_lengths = None
                 video_lengths = None
+                stno_masks = None
+                if "stno_mask" in sample_features and sample_features["stno_mask"] is not None:
+                    stno_mask = sample_features["stno_mask"].cuda()
             else:
                 audios = sample_features["audios"].cuda()
                 videos = sample_features["videos"].cuda()
@@ -402,7 +428,10 @@ class InferenceEngine:
                 video_lengths = sample_features["video_lengths"].cuda()
             
             try:
-                output = self.model_impl.inference(videos, audios)
+                if self.model_type== "av_dicow":
+                    output = self.model_impl.inference(videos, audios, stno_mask=stno_mask)
+                else:
+                    output = self.model_impl.inference(videos, audios)
             except Exception as e:
                 print(f"Error during inference for segment {sample}")
                 raise e

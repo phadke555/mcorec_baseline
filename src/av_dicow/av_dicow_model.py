@@ -1220,6 +1220,13 @@ class DiCoWGenerationMixin(WhisperForConditionalGeneration):
 
 
     def _retrieve_init_tokens(self, input_features, batch_size, generation_config, config, num_segment_frames, kwargs):
+        if not hasattr(generation_config, "forced_decoder_ids"):
+            generation_config.forced_decoder_ids = None
+        if not hasattr(generation_config, "language"):
+            generation_config.language = None
+        if not hasattr(generation_config, "task"):
+            generation_config.task = None
+
         task = getattr(generation_config, "task", None)
         language = getattr(generation_config, "language", None)
 
@@ -2275,7 +2282,7 @@ class DiCoWForConditionalGeneration(DiCoWGenerationMixin, WhisperForConditionalG
             self,
             input_features: Optional[torch.FloatTensor] = None,
             attention_mask: Optional[torch.LongTensor] = None,
-            stno_masks: Optional[torch.FloatTensor] = None,
+            stno_mask: Optional[torch.FloatTensor] = None,
             decoder_input_ids: Optional[torch.LongTensor] = None,
             decoder_attention_mask: Optional[torch.LongTensor] = None,
             head_mask: Optional[torch.Tensor] = None,
@@ -2307,7 +2314,7 @@ class DiCoWForConditionalGeneration(DiCoWGenerationMixin, WhisperForConditionalG
 
         Returns:
         """
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         if labels is not None:
@@ -2333,7 +2340,7 @@ class DiCoWForConditionalGeneration(DiCoWGenerationMixin, WhisperForConditionalG
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
             cache_position=cache_position,
-            stno_mask=stno_masks,
+            stno_mask=stno_mask,
             enrollments=enrollments,
             vision_features=vision_features
         )

@@ -300,7 +300,7 @@ def collate_pad(batch):
         c_batch, sample_lengths = pad(
             [s[data_type] for s in batch if s[data_type] is not None], pad_val
         )
-        batch_out[data_type + "s"] = c_batch
+        batch_out[data_type + "s" if data_type != "stno_mask" else "stno_mask"] = c_batch
         batch_out[data_type + "_lengths"] = torch.tensor(sample_lengths)
     return batch_out
     
@@ -314,11 +314,9 @@ class DataCollator:
     model_features_subsample_factor: int = 2
     
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
-        
         # {"video": video, "audio": audio, "target": token_id}
         samples = []
         for feature in features:
-            print(feature)
             if "start_time" in feature and "end_time" in feature:
                 if feature["start_time"] > feature["end_time"]:
                     continue
@@ -358,9 +356,15 @@ class DataCollator:
                     add_special_tokens=True
                 ).input_ids
                 label = torch.tensor(label_ids, dtype=torch.long)
-                samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask, "label": label})
+                if "vad_mask" in feature:
+                    samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask, "label": label})
+                else:
+                    samples.append({"vision_feature": video, "input_feature": audio, "label": label})
             else:
-                samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask, })
+                if "vad_mask" in feature:
+                    samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask})
+                else:
+                    samples.append({"vision_feature": video, "input_feature": audio})
         
         batch = collate_pad(samples)
         
