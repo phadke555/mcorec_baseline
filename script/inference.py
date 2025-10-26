@@ -203,26 +203,35 @@ class AVDICOWModel(BaseInferenceModel):
     """AV DiCoW model implementation"""
     
     def load_model(self):
-        from src.dataset.av_dicow_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
+        from src.dataset.av_dicow_dataset import AudioTransform, VideoTransform, DataCollator
         from transformers import WhisperProcessor
         from src.tokenizer.spm_tokenizer import TextTransform
         from src.av_dicow.av_dicow_model import DiCoWForConditionalGeneration
 
-        sp_model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src/tokenizer/spm/unigram/unigram5000.model")
-        dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src/tokenizer/spm/unigram/unigram5000_units.txt")
-        text_transform = TextTransform(
+        # Load text transform
+        sp_model_path, dict_path = self.get_tokenizer_paths()
+        self.text_transform = TextTransform(
             sp_model_path=sp_model_path,
             dict_path=dict_path,
         )
         
+        # Load Whisper processor first
+        whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-large-v3-turbo")
+        if hasattr(whisper_processor, "tokenizer"):
+            try:
+                whisper_processor.tokenizer.set_prefix_tokens(language="en", task="transcribe")
+            except Exception:
+                pass
+        
         # Load data collator
-        audio_transform = AudioTransform(subset="test", whisper_processor=processor,)
+        audio_transform = AudioTransform(subset="test", whisper_processor=whisper_processor)
         video_transform = VideoTransform(subset="test")
         
         self.av_data_collator = DataCollator(
-            text_transform=text_transform,
+            text_transform=self.text_transform,
             audio_transform=audio_transform,
             video_transform=video_transform,
+            whisper_processor=whisper_processor,
         )
         
         # Load model
@@ -232,19 +241,54 @@ class AVDICOWModel(BaseInferenceModel):
             model_name, 
             cache_dir=self.cache_dir
         )
-        whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-large-v3-turbo")
-        self.tokenizer = whisper_processor.tokenizer
+        self.model.tokenizer = whisper_processor.tokenizer
         self.model = self.model.cuda().eval()
     
     def inference(self, videos, audios, **kwargs):
-        attention_mask = torch.BoolTensor(audios.size(0), audios.size(-1)).fill_(False).cuda()
+        # DiCoW expects input_features and vision_features
+        # The model expects the audio to be processed as input_features
+        # and video as vision_features
         output = self.model.generate(
-            audios,
-            attention_mask=attention_mask,
-            video=videos,
+            input_features=audios,
+            vision_features=videos,
         )
-        output = self.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
-        return output
+        
+        # Handle the output format - DiCoW returns segments with text
+        # The output can be a dict with 'segments' key or a list of segments
+        if isinstance(output, dict):
+            if 'segments' in output:
+                # Extract text from segments
+                text_parts = []
+                for segment in output['segments']:
+                    if isinstance(segment, dict) and 'text' in segment:
+                        text_parts.append(segment['text'].strip())
+                return ' '.join(text_parts).upper() if text_parts else ""
+            elif 'text' in output:
+                return output['text'].upper()
+            else:
+                # Try to find any text-like keys
+                for key in ['transcription', 'transcript', 'result']:
+                    if key in output:
+                        return str(output[key]).upper()
+        elif isinstance(output, list) and len(output) > 0:
+            # If it's a list of segments, concatenate the text
+            text_parts = []
+            for segment in output:
+                if isinstance(segment, dict) and 'text' in segment:
+                    text_parts.append(segment['text'].strip())
+                elif isinstance(segment, str):
+                    text_parts.append(segment.strip())
+            return ' '.join(text_parts).upper() if text_parts else ""
+        else:
+            # Fallback: try to decode as token IDs
+            if hasattr(self.model, 'tokenizer') and self.model.tokenizer is not None:
+                try:
+                    return self.model.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
+                except:
+                    pass
+        
+        # Final fallback
+        return str(output).upper() if output else ""
 
 
 class InferenceEngine:
@@ -327,16 +371,35 @@ class InferenceEngine:
         
         for seg in tqdm(segments, desc="Processing segments" if desc is None else desc, total=len(segments)):
             # Prepare sample
-            sample = {
-                "video": video_path,
-                "start_time": seg[0],
-                "end_time": seg[1],
-            }
+            if self.model_type == "av_dicow":
+                # DiCoW expects both video and audio paths
+                sample = {
+                    "video": video_path,
+                    "audio": video_path,  # For DiCoW, audio is extracted from the same video file
+                    "start_time": seg[0],
+                    "end_time": seg[1],
+                }
+            else:
+                # Other models only need video path
+                sample = {
+                    "video": video_path,
+                    "start_time": seg[0],
+                    "end_time": seg[1],
+                }
             sample_features = self.model_impl.av_data_collator([sample])
-            audios = sample_features["audios"].cuda()
-            videos = sample_features["videos"].cuda()
-            audio_lengths = sample_features["audio_lengths"].cuda()
-            video_lengths = sample_features["video_lengths"].cuda()
+            
+            # Handle different model types with different key names
+            if self.model_type == "av_dicow":
+                audios = sample_features["input_features"].cuda()
+                videos = sample_features["vision_features"].cuda()
+                # DiCoW doesn't use separate length tensors in the same way
+                audio_lengths = None
+                video_lengths = None
+            else:
+                audios = sample_features["audios"].cuda()
+                videos = sample_features["videos"].cuda()
+                audio_lengths = sample_features["audio_lengths"].cuda()
+                video_lengths = sample_features["video_lengths"].cuda()
             
             try:
                 output = self.model_impl.inference(videos, audios)
@@ -347,7 +410,11 @@ class InferenceEngine:
             segment_output.append(output)
 
             # GPU Memory Cleanup
-            del audios, videos, audio_lengths, video_lengths, sample_features
+            del audios, videos, sample_features
+            if audio_lengths is not None:
+                del audio_lengths
+            if video_lengths is not None:
+                del video_lengths
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
 
@@ -418,7 +485,7 @@ def main():
         '--model_type', 
         type=str, 
         required=True,
-        choices=['avsr_cocktail', 'auto_avsr', 'muavic_en'],
+        choices=['avsr_cocktail', 'auto_avsr', 'muavic_en', 'av_dicow'],
         help='Type of model to use for inference'
     )
     
