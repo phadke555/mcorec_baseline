@@ -669,6 +669,7 @@ class AVHubertEncoder(Wav2Vec2Encoder):
     def __init__(self, config):
         super().__init__(config)
         self.layers = nn.ModuleList([AVHubertEncoderLayer(config) for _ in range(config.num_hidden_layers)])
+        self._use_flash_attention_2 = getattr(config, "use_flash_attention_2", False)
     def forward(
         self,
         hidden_states: torch.tensor,

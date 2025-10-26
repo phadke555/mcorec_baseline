@@ -40,33 +40,15 @@ def load_video(path, start_time=0, end_time=None):
     rtype: torch, T x C x H x W
     """
     video_decoder = VideoDecoder(path, dimension_order="NHWC")
-    if end_time is None:
+    vid_end = video_decoder.metadata.duration_seconds
+    if end_time is None or end_time > vid_end:
         end_time = video_decoder.metadata.duration_seconds
+    if start_time > end_time:
+        start_time = end_time - 1.0
     vid_rgb = video_decoder.get_frames_played_in_range(start_time, end_time).data
     vid = vid_rgb.permute(0, 3, 1, 2)
-    # vid_rgb = torchvision.io.read_video(path, start_pts=start_time, end_pts=end_time, pts_unit="sec", output_format="THWC")[0]
-    # frames = [cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) for frame in vid_rgb.numpy()]
-    # vid = torch.from_numpy(np.stack(frames)).unsqueeze(1)
     return vid
 
-
-# def load_audio(path, start_time=0, end_time=None):
-#     """
-#     rtype: torch, T x 1
-#     """
-#     if start_time == 0 and end_time is None:
-#         frame_offset = 0
-#         num_frames = -1
-#     else:
-#         frame_offset = int(start_time * 16000)
-#         num_frames = int((end_time - start_time) * 16000)
-
-#     if path.endswith(".mp4") and os.path.exists(path.replace(".mp4", ".wav")):
-#         waveform, sample_rate = torchaudio.load(path.replace(".mp4", ".wav"), frame_offset=frame_offset, num_frames=num_frames, normalize=True)
-#     else:
-#         waveform, sample_rate = torchaudio.load(path, frame_offset=frame_offset, num_frames=num_frames, normalize=True)
-#     assert sample_rate == 16000
-#     return waveform.transpose(1, 0)
 
 def load_audio(path, start_time=0, end_time=None):
     if AudioDecoder is not None:
@@ -216,22 +198,6 @@ class AddMultiSpk(torch.nn.Module):
         
         return speech
 
-IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
-IMAGENET_STD  = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
-
-def _resize_224(x: torch.Tensor) -> torch.Tensor:
-    # (T, C, H, W) -> (T, C, 224, 224)
-    return F.interpolate(x, size=(224, 224), mode="bilinear", align_corners=False, antialias=True)
-
-def _imagenet_normalize(frames: torch.Tensor) -> torch.Tensor:
-    mean = IMAGENET_MEAN.to(frames.device, frames.dtype)
-    std  = IMAGENET_STD.to(frames.device, frames.dtype)
-    return (frames - mean) / std
-
-def _to_float01(x):           # (T, C, H, W), uint8 or float
-    x = x.float()
-    return x / 255.0
-
 class DinoFastVideoTransform(torch.nn.Module):
     """
     Apply the DINOv3 Fast ImageProcessor to a sequence of frames.
@@ -264,25 +230,8 @@ class DinoFastVideoTransform(torch.nn.Module):
 class VideoTransform:
     def __init__(self, subset):
         if subset == "train":
-            # self.video_pipeline = torch.nn.Sequential(
-            #     FunctionalModule(_to_float01),
-            #     FunctionalModule(_resize_224),
-            #     FunctionalModule(_imagenet_normalize)
-            #     # torchvision.transforms.RandomCrop(88),
-            #     # torchvision.transforms.Grayscale(),
-            #     # AdaptiveTimeMask(10, 25),
-            #     # torchvision.transforms.Normalize(0.421, 0.165),
-            # )
             self.video_pipeline = DinoFastVideoTransform()
         elif subset == "val" or subset == "test":
-            # self.video_pipeline = torch.nn.Sequential(
-            #     FunctionalModule(_to_float01),
-            #     FunctionalModule(_resize_224),
-            #     FunctionalModule(_imagenet_normalize)
-            #     # torchvision.transforms.CenterCrop(88),
-            #     # torchvision.transforms.Grayscale(),
-            #     # torchvision.transforms.Normalize(0.421, 0.165),
-            # )
             self.video_pipeline = DinoFastVideoTransform()
 
     def __call__(self, sample):
@@ -362,29 +311,46 @@ class DataCollator:
     audio_transform: AudioTransform = None
     rate_ratio: int = 640
     whisper_processor: WhisperProcessor = None
+    model_features_subsample_factor: int = 2
     
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         
         # {"video": video, "audio": audio, "target": token_id}
         samples = []
         for feature in features:
+            print(feature)
             if "start_time" in feature and "end_time" in feature:
+                if feature["start_time"] > feature["end_time"]:
+                    continue
                 video = load_video(feature["video"], feature["start_time"], feature["end_time"])
+                audio = load_audio(feature["audio"], feature["start_time"], feature["end_time"])
             else:
                 video = load_video(feature["video"])
-
-            if "start_time" in feature and "end_time" in feature:
-                audio = load_audio(feature["video"], feature["start_time"], feature["end_time"])
-            else:
-                audio = load_audio(feature["video"])
+                audio = load_audio(feature["audio"])
+                
                 
             # audio = cut_or_pad(audio, len(video) * self.rate_ratio)
-            whisper_audio_len = 30 * 16000  # 480000 samples
-            video_target_len = whisper_audio_len // self.rate_ratio  # 480000 / 640 = 750 frames
-            video = cut_or_pad(video, video_target_len)
+            # whisper_audio_len = 30 * 16000  # 480000 samples
+            # video_target_len = whisper_audio_len // self.rate_ratio  # 480000 / 640 = 750 frames
+            # video = cut_or_pad(video, video_target_len)
             
             video = self.video_transform(video)
             audio = self.audio_transform(audio)
+
+            # --- VAD Mask Handling ---
+            if "vad_mask" in feature:
+                vad_mask = feature["vad_mask"]
+                # Pad to match features
+                pad_len = (self.whisper_processor.feature_extractor.n_samples - vad_mask.shape[-1]) % self.whisper_processor.feature_extractor.n_samples
+                vad_mask = np.pad(vad_mask, ((0, 0), (0, pad_len)), mode='constant')
+
+                # Downsample to meet model features sampling rate
+                vad_mask = vad_mask.astype(np.float32).reshape(vad_mask.shape[0], -1,
+                    self.model_features_subsample_factor * self.whisper_processor.feature_extractor.hop_length).mean(axis=-1)
+                vad_mask = torch.from_numpy(vad_mask)
+            else:
+                vad_mask = None
+            # --- ---
 
             if "label" in feature:
                 label_ids = self.whisper_processor.tokenizer(
@@ -392,13 +358,17 @@ class DataCollator:
                     add_special_tokens=True
                 ).input_ids
                 label = torch.tensor(label_ids, dtype=torch.long)
-                samples.append({"video": video, "input_feature": audio, "label": label})
+                samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask, "label": label})
             else:
-                samples.append({"video": video, "input_feature": audio})
+                samples.append({"vision_feature": video, "input_feature": audio, "stno_mask": vad_mask, })
         
         batch = collate_pad(samples)
         
-        batch['videos'] = batch['videos'].permute(0, 2, 1, 3, 4)
+        batch['vision_features'] = batch['vision_features'].permute(0, 2, 1, 3, 4)
+        # target_len = 1500
+        # batch['vision_features'] = F.interpolate(
+        #     batch['vision_features'], size=(target_len, 224, 224),
+        #     mode='trilinear', align_corners=False
+        # )
         batch['input_features'] = batch['input_features'].permute(0, 2, 1)
-        
         return batch

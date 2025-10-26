@@ -37,7 +37,7 @@ os.environ['WANDB_PROJECT'] = 'mcorec'
 
 
 
-def load_avsr_dataset(cache_dir='data-bin/cache', include_mcorec=True, streaming=False):
+def load_avsr_dataset(cache_dir='/export/fs06/rphadke1/data/mcorec/data-bin/cache', include_mcorec=True, streaming=False):
     # streaming=True to avoid downloading all dataset at once, but it can be crash if network is unstable
     # streaming=False to download all dataset at once, it take time and around 1.5TB disk space. More stable.
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_steps", type=int, default=4000)
     parser.add_argument("--resume_from_checkpoint", action="store_true", default=False)
     parser.add_argument("--checkpoint_name", type=str, default="mcorec_finetuning")
-    parser.add_argument("--model_name_or_path", type=str, default="./model-bin/avsr_cocktail") # Or None to train from scratch
+    parser.add_argument("--model_name_or_path", type=str, default="/export/fs06/rphadke1/data/mcorec/model-bin/avsr_cocktail") # Or None to train from scratch
     parser.add_argument("--report_to", type=str, default="none") # wandb or none
     parser.add_argument("--output_dir", type=str, default=os.path.join(os.path.dirname(os.path.dirname(__file__)), f"model-bin"))
 

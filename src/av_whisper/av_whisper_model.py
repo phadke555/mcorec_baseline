@@ -112,10 +112,37 @@ class AVWhisperEncoder(WhisperEncoder):
         n_heads = config.encoder_attention_heads
         dropout = config.dropout
 
-        # Create one CrossAttnBlock per encoder layer
+        self.vision_encoder: Optional[nn.Module] = None
+        self.vision_feature_dim: Optional[int] = None
+        self.vision_projection = None
+        self.vision_layer_norm = None
+        self.cross_attn_blocks = None
+    
+    def set_vision_encoder(
+        self,
+        encoder
+    ):
+        self.vision_encoder = encoder
+        self.vision_feature_dim = encoder.config.hidden_size
+        self.vision_projection = nn.Linear(self.vision_feature_dim, self.config.d_model)
+        self.vision_layer_norm = nn.LayerNorm(self.config.d_model)
         self.cross_attn_blocks = nn.ModuleList([
-            CrossAttnBlock(d_model, n_heads, dropout) for _ in range(config.encoder_layers)
+            CrossAttnBlock(self.config.d_model, self.config.encoder_attention_heads, self.config.dropout) for _ in range(self.config.encoder_layers)
         ])
+    
+    def embed_vision_features(
+        self,
+        vision_features
+    ):
+        # import pdb; pdb.set_trace()
+        B, C, T_v, H, W = vision_features.shape
+        vision_features = vision_features.permute(0, 2, 1, 3, 4).contiguous().view(B * T_v, C, H, W)
+        vision_features = self.vision_encoder(vision_features)
+        vision_features = vision_features.pooler_output
+        vision_features = vision_features.view(B, T_v, -1)
+        vision_features = self.vision_projection(vision_features)
+        vision_features = self.vision_layer_norm(vision_features)
+        return vision_features
 
     def forward(
         self,
@@ -150,7 +177,7 @@ class AVWhisperEncoder(WhisperEncoder):
             return_dict (`bool`, *optional*):
                 Whether or not to return a [`~utils.ModelOutput`] instead of a plain tuple.
         """
-
+        # import pdb; pdb.set_trace()
         expected_seq_length = self.config.max_source_positions * self.conv1.stride[0] * self.conv2.stride[0]
         if input_features.shape[-1] != expected_seq_length:
             raise ValueError(
@@ -174,6 +201,9 @@ class AVWhisperEncoder(WhisperEncoder):
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
 
+        if self.vision_encoder is not None:
+            vision_features = self.embed_vision_features(vision_features)
+
         for idx, encoder_layer in enumerate(self.layers):
             if output_hidden_states:
                 encoder_states = encoder_states + (hidden_states,)
@@ -190,10 +220,17 @@ class AVWhisperEncoder(WhisperEncoder):
                 layer_outputs = encoder_layer(
                     hidden_states,
                     None,
+                    None,
                     output_attentions=output_attentions,
                 )
                 hidden_states = layer_outputs[0]
-            if vision_features is not None:
+            if self.vision_encoder is not None:
+                vision_features = torch.nn.functional.interpolate(
+                    vision_features.permute(0, 2, 1),  # (B, D, T_v)
+                    size=hidden_states.shape[1],        # target T_audio
+                    mode="linear",
+                    align_corners=False,
+                ).permute(0, 2, 1)
                 hidden_states = self.cross_attn_blocks[idx](
                     audio_h=hidden_states,
                     vision_h=vision_features,
@@ -212,122 +249,7 @@ class AVWhisperEncoder(WhisperEncoder):
             last_hidden_state=hidden_states, hidden_states=encoder_states, attentions=all_attentions
         )
 
-class AVEncoder(nn.Module):
-    """
-    Wrapper module combining audio and visual encoding for Whisper.
 
-    This component orchestrates:
-    1. Extraction of vision features (e.g., via DINOv3).
-    2. Temporal alignment between audio and vision sequences.
-    3. Invocation of :class:`AVWhisperEncoder` with appropriate masks.
-
-    Args:
-        config (`WhisperConfig`):
-            Model configuration including audio-visual settings and
-            DINOv3 feature specifications.
-
-    Inputs:
-        audio_features (`torch.FloatTensor` of shape `(B, T_a, F_a)`):
-            Log-mel or encoder-ready audio features.
-        video (`torch.FloatTensor` or `torch.ByteTensor`, shape `(B, C, T_v, H, W)`):
-            Video frames or precomputed vision embeddings.
-        audio_lengths (`torch.LongTensor`, *optional*, shape `(B,)`):
-            Actual audio sequence lengths before padding.
-        video_lengths (`torch.LongTensor`, *optional*, shape `(B,)`):
-            Actual video sequence lengths before padding.
-
-    Returns:
-        `BaseModelOutput`:
-            Encoder output identical in structure to Whisper's, but with
-            cross-modal context incorporated.
-
-    Notes:
-        - Handles linear projection from `vision_feature_dim` → `d_model` if needed.
-        - Applies LayerNorm to vision embeddings to match Whisper encoder scale.
-        - Generates `vision_pad_mask` and alignment masks for cross-attention.
-    """
-    
-    def __init__(self, config: WhisperConfig):
-        super().__init__()
-        self.config = config
-        
-        # Load DINOv3 model for vision encoding
-        self.vision_encoder = torch.hub.load("/home/rphadke1/chime/dinov3", 'dinov3_vits16', source='local', weights="/export/fs06/rphadke1/data/mcorec/model-bin/avwhisper/dinov3_vits16_pretrain_lvd1689m-08c60483.pth")
-        
-        # Initialize AVWhisperEncoder for audio encoding
-        self.audio_encoder = AVWhisperEncoder(config)
-        
-        # Get DINOv3 feature dimension (typically 384 for vit-small)
-        dinov3_feature_dim = 384
-        
-        # Linear projection to transform vision features to d_model
-        self.vision_projection = nn.Linear(dinov3_feature_dim, config.d_model)
-        
-        # Layer normalization for vision features
-        self.vision_layer_norm = nn.LayerNorm(config.d_model)
-        
-    def forward(
-        self,
-        audio_features,
-        videos=None,
-        audio_lengths=None,
-        video_lengths=None,
-        attention_mask=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs
-    ):
-        """
-        Forward pass through the audio-visual encoder.
-        
-        Args:
-            audio_features: Audio input features
-            video: Video frames of shape (B, C, T_v, H, W)
-            audio_lengths: Actual audio sequence lengths
-            video_lengths: Actual video sequence lengths
-            attention_mask: Audio attention mask
-            output_attentions: Whether to output attention weights
-            output_hidden_states: Whether to output hidden states
-            return_dict: Whether to return a dictionary
-            
-        Returns:
-            BaseModelOutput with audio-visual encoded features
-        """
-        import pdb; pdb.set_trace()
-        vision_features = None
-        vision_pad_mask = None
-        
-        if videos is not None:
-            # Process videos through DINOv3
-            B, C, T_v, H, W = videos.shape
-            # (B*T_v, C, H, W)
-            videos = videos.permute(0, 2, 1, 3, 4).contiguous().view(B * T_v, C, H, W)
-            
-            # Extract features using DINOv3
-            vision_features = self.vision_encoder(videos)
-            vision_features = vision_features.get("x_norm_clstoken",vision_features.last_hidden_state[:, 0])  # x_norm_clstoken features
-            
-            # (B, T_v, feature_dim), is this really true?
-            vision_features = vision_features.view(B, T_v, -1)
-            # (B, T_v, feature_dim)
-            vision_features = self.vision_projection(vision_features)
-            vision_features = self.vision_layer_norm(vision_features)
-            
-            # Create vision padding mask if video_lengths provided
-            if video_lengths is not None:
-                vision_pad_mask = torch.arange(T_v, device=videos.device).expand(B, T_v) >= video_lengths.unsqueeze(1)
-        
-        # Pass through AVWhisperEncoder
-        return self.audio_encoder(
-            input_features=audio_features,
-            attention_mask=attention_mask,
-            vision_features=vision_features,
-            vision_pad_mask=vision_pad_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
 
 class AVWhisperModel(WhisperModel):
     """
@@ -364,7 +286,7 @@ class AVWhisperModel(WhisperModel):
     """
     def __init__(self, config):
         super().__init__(config)
-        self.encoder = AVEncoder(config)
+        self.encoder = AVWhisperEncoder(config)
     def forward(
             self,
             input_features: Optional[torch.FloatTensor] = None,
@@ -388,6 +310,7 @@ class AVWhisperModel(WhisperModel):
             per_group_sizes: Optional[torch.LongTensor] = None,
             **kwargs
     ) -> Union[Tuple[torch.Tensor], Seq2SeqModelOutput]:
+        # import pdb; pdb.set_trace()
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -400,7 +323,7 @@ class AVWhisperModel(WhisperModel):
 
             encoder_outputs = self.encoder(
                 input_features,
-                videos=videos,
+                vision_features=videos,
                 video_lengths=video_lengths,
                 output_attentions=output_attentions,
                 output_hidden_states=True,

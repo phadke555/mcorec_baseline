@@ -199,6 +199,53 @@ class MuAViCModel(BaseInferenceModel):
         output = self.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
         return output
 
+class AVDICOWModel(BaseInferenceModel):
+    """AV DiCoW model implementation"""
+    
+    def load_model(self):
+        from src.dataset.av_dicow_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
+        from transformers import WhisperProcessor
+        from src.tokenizer.spm_tokenizer import TextTransform
+        from src.av_dicow.av_dicow_model import DiCoWForConditionalGeneration
+
+        sp_model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src/tokenizer/spm/unigram/unigram5000.model")
+        dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src/tokenizer/spm/unigram/unigram5000_units.txt")
+        text_transform = TextTransform(
+            sp_model_path=sp_model_path,
+            dict_path=dict_path,
+        )
+        
+        # Load data collator
+        audio_transform = AudioTransform(subset="test", whisper_processor=processor,)
+        video_transform = VideoTransform(subset="test")
+        
+        self.av_data_collator = DataCollator(
+            text_transform=text_transform,
+            audio_transform=audio_transform,
+            video_transform=video_transform,
+        )
+        
+        # Load model
+        model_name = self.checkpoint_path or 'BUT-FIT/DiCoW_v3_2'
+        print(f"Loading model from {model_name}")
+        self.model = DiCoWForConditionalGeneration.from_pretrained(
+            model_name, 
+            cache_dir=self.cache_dir
+        )
+        whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-large-v3-turbo")
+        self.tokenizer = whisper_processor.tokenizer
+        self.model = self.model.cuda().eval()
+    
+    def inference(self, videos, audios, **kwargs):
+        attention_mask = torch.BoolTensor(audios.size(0), audios.size(-1)).fill_(False).cuda()
+        output = self.model.generate(
+            audios,
+            attention_mask=attention_mask,
+            video=videos,
+        )
+        output = self.tokenizer.batch_decode(output, skip_special_tokens=True)[0].upper()
+        return output
+
 
 class InferenceEngine:
     """Main inference engine that handles model selection and processing"""
@@ -219,6 +266,8 @@ class InferenceEngine:
             return AutoAVSRModel(self.checkpoint_path, self.cache_dir, self.beam_size)
         elif self.model_type == "muavic_en":
             return MuAViCModel(self.checkpoint_path, self.cache_dir, self.beam_size)
+        elif self.model_type == "av_dicow":
+            return AVDICOWModel(self.checkpoint_path, self.cache_dir, self.beam_size)
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
     

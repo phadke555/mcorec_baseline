@@ -6,7 +6,7 @@ from datasets import load_from_disk
 from src.dataset.avwhisper_dataset import load_audio, load_video, cut_or_pad, AudioTransform, VideoTransform, DataCollator
 from src.tokenizer.spm_tokenizer import TextTransform
 from src.av_whisper.av_whisper_model import AVWhisperForConditionalGeneration
-from transformers import TrainingArguments, WhisperProcessor, WhisperConfig
+from transformers import TrainingArguments, WhisperProcessor, WhisperConfig, AutoModel
 from src.custom_trainer import AVSRTrainer
 from transformers.trainer_utils import IntervalStrategy
 from torchsummary import summary
@@ -185,6 +185,7 @@ if __name__ == "__main__":
     parser.add_argument("--report_to", type=str, default="none") # wandb or none
     parser.add_argument("--output_dir", type=str, default=os.path.join(os.path.dirname(os.path.dirname(__file__)), f"model-bin"))
     parser.add_argument("--whisper_model", type=str, default="openai/whisper-small", help="Whisper model to use as base")
+    parser.add_argument("--vision_model", type=str, default="facebook/dinov3-vits16-pretrain-lvd1689m", help="DinoV3 Vision model to use as base")
 
     args = parser.parse_args()
 
@@ -204,6 +205,7 @@ if __name__ == "__main__":
     output_dir = os.path.join(args.output_dir, checkpoint_name)
     report_to = args.report_to
     whisper_model = args.whisper_model
+    vision_model = args.vision_model
     
     # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -232,15 +234,17 @@ if __name__ == "__main__":
         print("Initializing AVWhisper from Whisper base:", args.whisper_model)
         # Prefer loading weights directly from HF base
         try:
-            avsr_model = AVWhisperForConditionalGeneration.from_pretrained(args.whisper_model)
-        except Exception:
-            # Fallback: build from config if your wrapper needs init first
-            avsr_config = WhisperConfig.from_pretrained(args.whisper_model)
-            avsr_model = AVWhisperForConditionalGeneration(avsr_config).from_pretrained(args.whisper_model)
-    
+            avsr_config = WhisperConfig.from_pretrained(whisper_model)
+            avsr_model = AVWhisperForConditionalGeneration(avsr_config).from_pretrained(whisper_model)
+            vision_model = AutoModel.from_pretrained(vision_model)
+            avsr_model.model.encoder.set_vision_encoder(vision_model)
+
+        except:
+            print("Error no model loaded because of error")
+            exit()
+
     # Load dataset
     train_dataset, valid_dataset, interference_dataset = load_avsr_dataset(streaming=streaming_dataset, include_mcorec=include_mcorec)
-        
     train_av_data_collator = DataCollator(
         text_transform=text_transform,
         audio_transform=AudioTransform(subset="train", speech_dataset=interference_dataset, whisper_processor=processor,),
@@ -276,7 +280,8 @@ if __name__ == "__main__":
         gradient_accumulation_steps=gradient_accumulation_steps,
         metric_for_best_model='loss',
         greater_is_better=False,
-        fp16=True,
+        bf16=True,
+        fp16=False,
         gradient_checkpointing=False, 
         remove_unused_columns=False,
         dataloader_num_workers=2,
