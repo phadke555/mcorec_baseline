@@ -1,3 +1,10 @@
+"""
+This file includes significant portions of code adapted from the public Target Speaker ASR
+ repository by Alexander Polok et al.
+The original implementation can be found at:
+https://github.com/BUTSpeechFIT/TS-ASR-Whisper
+"""
+
 import copy
 import os
 from decimal import Decimal, ROUND_HALF_UP

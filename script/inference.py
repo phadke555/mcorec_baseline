@@ -416,8 +416,6 @@ class InferenceEngine:
                 audios = sample_features["input_features"].cuda()
                 videos = sample_features["vision_features"].cuda()
                 # DiCoW doesn't use separate length tensors in the same way
-                audio_lengths = None
-                video_lengths = None
                 stno_masks = None
                 if "stno_mask" in sample_features and sample_features["stno_mask"] is not None:
                     stno_mask = sample_features["stno_mask"].cuda()
